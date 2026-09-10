@@ -330,8 +330,8 @@ work. Numbers below follow the exercise brief's order, rather than implementatio
 ## OpenAPI and Swagger
 
 Start the service with `npm run dev`, then open the generated contract at
-**http://127.0.0.1:3000/openapi.json** or use the interactive Swagger reference at
-**http://127.0.0.1:3000/docs**. The document is generated from the route contracts and
+**[http://127.0.0.1:3000/openapi.json](http://127.0.0.1:3000/openapi.json)** or use the interactive Swagger reference at
+**[http://127.0.0.1:3000/docs](http://127.0.0.1:3000/docs)**. The document is generated from the route contracts and
 the same runtime Zod schemas that validate canonical and provider data. Swagger's “Try it out”
 uses the current local server and the specification URL is relative, so it never targets an
 external provider.
@@ -339,6 +339,30 @@ external provider.
 The provider path remains registry-driven rather than a fixed OpenAPI enum. The documentation
 includes examples for the current Acorn, Beacon and Cosper adapters; call `GET /v1/providers`
 for the authoritative runtime capability list.
+
+### Verify the API reference locally
+
+In the first terminal, from the repository root:
+
+```sh
+nvm install && nvm use
+npm ci
+npm run dev
+```
+
+Leave that server running. In a second terminal, use the exact variable name below:
+
+```sh
+export ZEROKEY_URL='http://127.0.0.1:3000'
+
+curl --fail-with-body -sS "$ZEROKEY_URL/openapi.json"
+open "$ZEROKEY_URL/docs"
+```
+
+The first command prints the generated OpenAPI JSON. The second opens the interactive local
+reference in the default browser. This screenshot records a successful manual Swagger check:
+
+![Swagger UI showing all documented ZeroKey API operations and schemas](docs/openapi-swagger-ui.png)
 
 ## Round-trip consistency
 
