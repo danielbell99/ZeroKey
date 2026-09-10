@@ -32,3 +32,34 @@ No ambient shims, suppressed source errors or mixed Vitest package majors are in
 
 npm 12 blocks dependency install scripts by default. Only the reviewed esbuild 0.28.2
 binary installation script is allowed; optional fsevents scripts remain denied.
+
+## Core 2 — inbound adapters
+
+Acorn and Beacon have separate tolerant input schemas and explicit enum tables. Unknown
+provider fields are discarded. Known fields with incorrect types or non-empty invalid dates
+fail atomically; unknown enum labels degrade to null legal sex or unknown marital status.
+Missing optional strings become null, collections become empty arrays, and primary flags
+default to false. Duplicate recognised Beacon bag keys fail with their original array index.
+
+Names collapse whitespace; full_name excludes title. NI numbers uppercase and lose whitespace.
+Provider IDs remain distinct. Nationality is free text: Acorn's name (or supplied code fallback)
+and Beacon's label are not harmonised or inferred from residence.
+
+Acorn address components remain ordered: first non-empty component in line1, the rest in line2.
+Beacon's pre-concatenated line1 is split only at the first comma and only when line2 is empty.
+All remaining commas/content are preserved. Empty addresses are omitted, but county-only or
+move-in-only addresses retain their source information.
+
+The bounded country lookup covers GB/GBR, IE/IRL, FR/FRA, DE/DEU, US/USA, CA/CAN, AU/AUS
+and NZ/NZL, plus their English names. Unknown input countries become null, not guessed codes.
+
+Recognised phones become compact international strings. An explicit GB assumption converts
+11-digit local numbers starting with 0; + and 00 prefixes and presentation separators are
+supported. Other formats fail with useful paths. This is syntactic validation, not global
+number-plan validation. Emails retain case and are checked without DNS/network requests.
+Unknown contact channels become other; empty values are omitted; all non-empty contacts,
+primary flags and original order are retained for destination-specific selection.
+
+The sample canonical outputs intentionally differ in ID, nationality, Acorn's extra email
+and its move-in date. Their independently asserted shared fields agree. Original fixtures
+remain unchanged and are never loaded by the application.
