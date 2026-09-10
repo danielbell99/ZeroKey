@@ -77,6 +77,17 @@ describe("real Node HTTP server", () => {
           });
         });
         const url = `http://127.0.0.1:${port}`;
+        const openapi = await fetch(`${url}/openapi.json`);
+        expect(openapi.status).toBe(200);
+        expect(openapi.headers.get("content-type")).toContain("application/json");
+        expect(await openapi.json()).toMatchObject({
+          openapi: "3.0.0",
+          paths: { "/v1/{provider}/clients/normalise": { post: expect.any(Object) } },
+        });
+        const docs = await fetch(`${url}/docs`);
+        expect(docs.status).toBe(200);
+        expect(docs.headers.get("content-type")).toContain("text/html");
+        expect(await docs.text()).toContain("url: '/openapi.json'");
         const normalised = await fetch(`${url}/v1/acorn/clients/normalise`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -124,6 +124,32 @@ The smoke suite now exercises both inbound providers through the compiled HTTP s
 confirms their canonical nationality is `GB`; it then verifies Acorn can still build the exact
 Cosper target request. No deployment or external provider call is involved.
 
+## API documentation tooling
+
+The tooling stretch goal adds a generated OpenAPI 3.0 document at `/openapi.json` and a Swagger
+reference at `/docs`. The specification exposes provider discovery, canonical normalisation and
+Cosper request building; it documents all public success/error statuses, request IDs and named
+runtime schema components. The Swagger page points to the relative document URL, so its requests
+remain on the local loopback server.
+
+On 10 September 2026, the implementation passed the complete gate with **Node 24.21.0 and npm
+12.0.2**:
+
+| Check | Observed result |
+| --- | --- |
+| OpenAPI/Swagger API contracts | 2 tests passed: generated paths, statuses, components, safe examples and same-origin UI |
+| `npm run typecheck` | Source/test and production checks passed |
+| `npm run lint` | 42 files checked; no changes required |
+| `npm test` | 10 files, 278 unit/API tests passed |
+| `npm run coverage` | 278 tests passed; transformation thresholds passed |
+| `npm run test:smoke` | Production build passed; 6 real-server tests passed, including both documentation endpoints |
+| `npm audit --audit-level=high` | 0 vulnerabilities |
+| `npm run check` | Complete aggregate gate passed |
+
+The document uses named canonical/provider/Cosper schemas from the same runtime definitions.
+Examples use synthetic values and the API tests assert that supplied fixture NI and email values
+do not appear in the generated specification.
+
 ## Acceptance evidence
 
 | Core requirement | Evidence |
@@ -134,4 +160,4 @@ Cosper target request. No deployment or external provider call is involved.
 | 4. Hono API | Route/error tests, safe logs and compiled-server smoke tests |
 | 5. Extensibility | Test-only Delta adapter registered through unchanged routes |
 | 6. Meaningful testing | Unit/API/smoke suites, strict cross-provider consistency proof, audit and enforced coverage gate |
-| 7. Documentation | Clean installation and documented curl workflow |
+| 7. Documentation | Clean installation, documented curl workflow, generated OpenAPI contract and Swagger UI |
