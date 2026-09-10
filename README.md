@@ -11,6 +11,7 @@ Prerequisite: Node 24.21.0 and npm 12.0.2. If you use nvm, run `nvm install && n
 ```sh
 # Terminal 1 — from the repository root
 npm ci
+# Installs the repository-owned pre-commit and pre-push QA gates automatically.
 npm run dev
 
 # Terminal 2 — confirm the service is running
@@ -41,12 +42,13 @@ is needed.
 
 ```sh
 npm ci
-npm run hooks:install
 npm run dev
 ```
 
 `npm install && npm run dev` also works. `npm ci` is preferred for reproducing the lockfile.
-The hook installer affects only this repository and refuses to overwrite another hooks path.
+Its `prepare` step installs the repository-owned hooks automatically. The installer affects only
+this repository and refuses to overwrite another hooks path. If you installed dependencies with
+`--ignore-scripts`, run `npm run hooks:install` once instead.
 
 The service listens at **http://127.0.0.1:3000**. Override the port with `PORT=3001 npm run dev`.
 An invalid or occupied port fails clearly; the service never stops another process. Stop with
@@ -255,6 +257,7 @@ added by registration alone while retaining exact concrete request types.
 ## Test and review
 
 ```sh
+npm run check:fast
 npm run typecheck
 npm run lint
 npm test
@@ -263,10 +266,12 @@ npm run test:smoke
 npm run check
 ```
 
-`check` runs types, formatting/lint checks, unit/API tests, coverage thresholds, the production
-build, compiled-server smoke tests and `npm audit --audit-level=high`. It is also the gate
-used by pre-commit, pre-push and GitHub CI. Do not bypass hooks. Use `npm run lint:fix` or
-`npm run format` for local formatting fixes, then run the checks again.
+`check:fast` runs strict type checks, formatting/lint checks and the unit/API suite. It is the
+pre-commit gate, keeping feedback fast while still rejecting invalid source. `check` adds
+coverage thresholds, the production build, compiled-server smoke tests and
+`npm audit --audit-level=high`; it is enforced before every push and in GitHub CI. Do not bypass
+hooks. Use `npm run lint:fix` or `npm run format` for local formatting fixes, then run the checks
+again.
 
 Tests assert complete fixture outputs plus every listed enum, missing/bad data, calendar
 boundaries, source paths, primary-selection precedence, input immutability, extension behaviour

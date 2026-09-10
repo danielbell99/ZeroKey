@@ -121,9 +121,12 @@ production registry, and concrete adapter request types remain exact at compile 
 ## Core 6 — verification gates
 
 Unit and in-process API suites are independently selectable from compiled-server smoke tests.
-The quality gate runs strict source/test type checking, Biome, tests, V8 coverage, a production
-build, real-server smoke tests and a high/critical dependency audit. Both Git hooks and CI use
-that gate. Coverage includes all source files, including files not imported by unit/API tests.
+The full quality gate runs strict source/test type checking, Biome, tests, V8 coverage, a
+production build, real-server smoke tests and a high/critical dependency audit. `prepare`
+installs native, repository-owned hooks during a normal npm install: the pre-commit hook runs
+the fast static/unit gate and pre-push runs the full gate. GitHub CI also runs the full gate.
+This gives quick commit feedback without weakening the push or review boundary. Coverage includes
+all source files, including files not imported by unit/API tests.
 
 The domain/provider/shared transformation group must meet 90% lines/statements/functions and
 85% branches. Global coverage is reported honestly: the server entry point is tested in a

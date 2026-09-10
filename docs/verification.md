@@ -8,8 +8,7 @@ Remote GitHub checks remain the source of truth for pull-request status.
 A fresh copy of the staged repository files, with no existing `node_modules`, passed:
 
 ```text
-npm ci                         62 packages installed; 0 vulnerabilities
-npm run hooks:install          repository-local hooks installed
+npm ci                         62 packages installed; 0 vulnerabilities; hooks installed by prepare
 npm run typecheck              source/test and production checks passed
 npm run lint                   Biome checks passed
 npm test                       8 test files; 240 tests passed
