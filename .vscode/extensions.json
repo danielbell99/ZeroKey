@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "upstash.context7-mcp",
+    "biomejs.biome",
+    "humao.rest-client",
+    "vitest.explorer",
+    "openai.chatgpt"
+  ]
+}
