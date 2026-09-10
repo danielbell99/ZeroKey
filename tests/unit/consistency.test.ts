@@ -24,6 +24,7 @@ function sharedClient(client: CanonicalClient): SharedClient {
 }
 
 const expectedSharedClient = {
+  schema_version: "v1",
   title: "Mrs",
   first_name: "Priya",
   middle_names: null,

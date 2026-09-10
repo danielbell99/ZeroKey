@@ -1,7 +1,9 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
+  CANONICAL_V1_VERSION,
   CanonicalAddressSchema,
   type CanonicalClient,
+  CanonicalClientInputSchema,
   CanonicalClientSchema,
   CanonicalContactDetailSchema,
   IsoDateSchema,
@@ -23,12 +25,27 @@ describe("canonical contract", () => {
     expectTypeOf<CanonicalClient["nationality"]>().toEqualTypeOf<
       "GB" | "IE" | "FR" | "DE" | "US" | "CA" | "AU" | "NZ" | null
     >();
+    expectTypeOf<CanonicalClient["schema_version"]>().toEqualTypeOf<"v1">();
   });
 
   it("defaults omitted marital status but does not accept null", () => {
     const { marital_status: _status, ...input } = minimalClient();
     expect(CanonicalClientSchema.parse(input).marital_status).toBe("unknown");
     expect(CanonicalClientSchema.safeParse({ ...input, marital_status: null }).success).toBe(false);
+  });
+
+  it("requires explicit v1 on generated output but accepts an untagged legacy v1 input", () => {
+    const { schema_version: _version, ...legacy } = minimalClient();
+    expect(CanonicalClientSchema.safeParse(legacy).success).toBe(false);
+    expect(CanonicalClientInputSchema.parse(legacy)).toEqual(minimalClient());
+    expect(CanonicalClientInputSchema.parse(minimalClient())).toEqual(minimalClient());
+    for (const invalidVersion of ["v2", "V1", " v1 ", null, 1, true, {}, []]) {
+      expect(
+        CanonicalClientInputSchema.safeParse({ ...minimalClient(), schema_version: invalidVersion })
+          .success,
+      ).toBe(false);
+    }
+    expect(CanonicalClientSchema.parse(minimalClient()).schema_version).toBe(CANONICAL_V1_VERSION);
   });
 
   it.each(["id", "first_name", "nationality", "addresses", "contact_details"])(

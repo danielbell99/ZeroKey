@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { CANONICAL_V1_VERSION } from "../../src/domain/client.js";
 import { createApp } from "../../src/http/app.js";
 import { defaultRegistry } from "../../src/registry/providers.js";
 import { createRegistry, type ProviderAdapter } from "../../src/registry/registry.js";
@@ -34,7 +35,11 @@ describe("additive fourth-provider proof", () => {
     const app = createApp({ registry: createRegistry([...adapters, delta]) });
     expect(await (await app.request("/v1/providers")).json()).toEqual([
       ...existing.list(),
-      { slug: "delta", supports: ["normalise", "build-request"] },
+      {
+        slug: "delta",
+        supports: ["normalise", "build-request"],
+        canonical_version: CANONICAL_V1_VERSION,
+      },
     ]);
     const normalised = await app.request("/v1/delta/clients/normalise", {
       method: "POST",

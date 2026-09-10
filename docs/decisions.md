@@ -111,18 +111,26 @@ connections, with a five-second bound for active connections. Occupied ports fai
 no unrelated process is stopped. Smoke tests exercise both the real HTTP adapter and the
 compiled command-line entry point, including startup failures and both shutdown signals.
 
-## Core 5 — additive extension proof
+## Core 5 / stretch goal 5 — additive extension and canonical versioning
 
 A provider exports typed functions plus a slug. Its raw schema and mapping stay together;
 the only production registration edit is in the composition module. Supported operations
-are derived from actual methods, not a separately maintained capabilities list. No canonical
-versioning system or second resource is added.
+are derived from actual methods, not a separately maintained capabilities list.
+
+The canonical client declares `schema_version: "v1"`. This version names the complete
+canonical payload, independently of the `/v1` HTTP route, package release and OpenAPI format.
+Adapters explicitly produce the literal and generated output validation deliberately has no
+default, so a missing adapter version becomes a safe 500. Build-request input uses a separate
+strict compatibility schema that defaults only an omitted version to v1; explicit unsupported
+versions remain safe 422 caller errors. Future incompatible changes require a separately named
+canonical version and migration policy; unknown versions are never silently treated as v1.
 
 The registry snapshots and freezes registrations, returns fresh capability listings, and
-fails early for duplicate/invalid slugs or providers with no operations. Tests register a
-fourth, test-only adapter supporting both directions and exercise it through unchanged routes.
-The same validation and unsupported-operation errors apply. Adding it does not mutate the
-production registry, and concrete adapter request types remain exact at compile time.
+fails early for duplicate/invalid slugs, non-function declared operations or providers with no
+operations. Listings include the literal canonical version alongside method-derived capabilities.
+Tests register a fourth, test-only adapter supporting both directions and exercise it through
+unchanged routes. The same validation and unsupported-operation errors apply. Adding it does not
+mutate the production registry, and concrete adapter request types remain exact at compile time.
 
 ## Core 6 — verification gates
 

@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { CanonicalClientSchema } from "../domain/client.js";
+import { CanonicalClientInputSchema, CanonicalClientSchema } from "../domain/client.js";
 import { AcornClientSchema } from "../providers/acorn/schema.js";
 import { BeaconClientSchema } from "../providers/beacon/schema.js";
 import { CosperBuildResultSchema } from "../providers/cosper/schema.js";
@@ -60,6 +60,7 @@ const BuildProviderParamsSchema = z.object({
 const NormaliseInputSchema = z.union([AcornClientSchema, BeaconClientSchema]);
 
 const CanonicalClientExample = {
+  schema_version: "v1",
   id: "example-client",
   title: null,
   first_name: "Example",
@@ -101,7 +102,7 @@ export const normaliseRoute = createRoute({
   tags: ["Clients"],
   summary: "Normalise a provider client into the canonical model",
   description:
-    "The provider slug is resolved from the runtime registry. The examples cover the current Acorn and Beacon adapters; GET /v1/providers is the authoritative capability list.",
+    "The provider slug is resolved from the runtime registry. Successful responses explicitly declare canonical schema_version v1. The examples cover the current Acorn and Beacon adapters; GET /v1/providers is the authoritative capability list.",
   request: {
     params: NormaliseProviderParamsSchema,
     body: {
@@ -147,14 +148,14 @@ export const buildRequestRoute = createRoute({
   tags: ["Clients"],
   summary: "Build a provider request from a canonical client",
   description:
-    "The provider slug is resolved from the runtime registry. Cosper is the current build-request provider; GET /v1/providers is the authoritative capability list.",
+    "The provider slug is resolved from the runtime registry. Cosper is the current build-request provider; GET /v1/providers is the authoritative capability list. Canonical v1 is the current contract; schema_version may be omitted only for compatibility with legacy v1 callers.",
   request: {
     params: BuildProviderParamsSchema,
     body: {
       required: true,
       content: {
         "application/json": {
-          schema: CanonicalClientSchema,
+          schema: CanonicalClientInputSchema,
           example: CanonicalClientExample,
         },
       },

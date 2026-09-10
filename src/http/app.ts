@@ -3,12 +3,13 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { CanonicalClientSchema } from "../domain/client.js";
+import { CanonicalClientInputSchema, CanonicalClientSchema } from "../domain/client.js";
 import { defaultRegistry } from "../registry/providers.js";
 import {
   BuildResultSchema,
   type Operation,
   type ProviderAdapter,
+  ProviderCapabilitiesSchema,
   type ProviderRegistry,
 } from "../registry/registry.js";
 import { PayloadValidationError, parseInput, type ValidationIssue } from "../shared/validation.js";
@@ -86,7 +87,7 @@ export function createApp(options: AppOptions = {}) {
   app.openAPIRegistry.registerPath(providersRoute);
   app.openAPIRegistry.registerPath(normaliseRoute);
   app.openAPIRegistry.registerPath(buildRequestRoute);
-  app.get("/v1/providers", (c) => c.json(registry.list()));
+  app.get("/v1/providers", (c) => c.json(ProviderCapabilitiesSchema.parse(registry.list())));
 
   const resolve: (operation: Operation) => MiddlewareHandler<AppEnv> =
     (operation) => async (c, next) => {
@@ -150,7 +151,7 @@ export function createApp(options: AppOptions = {}) {
       } catch {
         return errorResponse(c, 400, "invalid_json", "Expected a non-empty valid JSON body");
       }
-      const client = parseInput(CanonicalClientSchema, input);
+      const client = parseInput(CanonicalClientInputSchema, input);
       const build = c.get("provider")?.buildRequest;
       if (!build) throw new Error("Registry operation invariant failed");
       return c.json(BuildResultSchema.parse(build(client)));

@@ -26,6 +26,13 @@ export const MaritalStatusSchema = z.enum([
   "unknown",
 ]);
 
+/**
+ * Identifies the canonical client contract, independently of the HTTP route
+ * prefix and the application release version.
+ */
+export const CANONICAL_V1_VERSION = "v1" as const;
+export const CanonicalVersionSchema = z.literal(CANONICAL_V1_VERSION);
+
 export const CanonicalAddressSchema = z
   .strictObject({
     primary: z.boolean(),
@@ -66,26 +73,41 @@ export const CanonicalContactDetailSchema = z
   })
   .openapi("CanonicalContactDetail");
 
+const CanonicalClientFields = {
+  id: TextSchema,
+  title: NullableTextSchema,
+  first_name: NullableTextSchema,
+  middle_names: NullableTextSchema,
+  last_name: NullableTextSchema,
+  full_name: NullableTextSchema,
+  date_of_birth: IsoDateSchema.nullable(),
+  // Formatting is not verification of issuance; the brief deliberately uses QQ.
+  ni_number: NiNumberSchema.nullable(),
+  legal_sex: LegalSexSchema.nullable(),
+  marital_status: MaritalStatusSchema.default("unknown"),
+  nationality: CanonicalCountryCodeSchema.nullable(),
+  addresses: z.array(CanonicalAddressSchema),
+  contact_details: z.array(CanonicalContactDetailSchema),
+} as const;
+
+/** Strict canonical output. Adapters must always declare the contract they produce. */
 export const CanonicalClientSchema = z
+  .strictObject({ ...CanonicalClientFields, schema_version: CanonicalVersionSchema })
+  .openapi("CanonicalClientV1");
+
+/**
+ * Compatibility boundary for callers created before the explicit v1 field.
+ * The default belongs here only: generated adapter output is validated above.
+ */
+export const CanonicalClientInputSchema = z
   .strictObject({
-    id: TextSchema,
-    title: NullableTextSchema,
-    first_name: NullableTextSchema,
-    middle_names: NullableTextSchema,
-    last_name: NullableTextSchema,
-    full_name: NullableTextSchema,
-    date_of_birth: IsoDateSchema.nullable(),
-    // Formatting is not verification of issuance; the brief deliberately uses QQ.
-    ni_number: NiNumberSchema.nullable(),
-    legal_sex: LegalSexSchema.nullable(),
-    marital_status: MaritalStatusSchema.default("unknown"),
-    nationality: CanonicalCountryCodeSchema.nullable(),
-    addresses: z.array(CanonicalAddressSchema),
-    contact_details: z.array(CanonicalContactDetailSchema),
+    ...CanonicalClientFields,
+    schema_version: CanonicalVersionSchema.default(CANONICAL_V1_VERSION),
   })
-  .openapi("CanonicalClient");
+  .openapi("CanonicalClientV1Input");
 
 export type CanonicalClient = z.infer<typeof CanonicalClientSchema>;
+export type CanonicalClientInput = z.input<typeof CanonicalClientInputSchema>;
 export type CanonicalAddress = z.infer<typeof CanonicalAddressSchema>;
 export type CanonicalContactDetail = z.infer<typeof CanonicalContactDetailSchema>;
 export type LegalSex = z.infer<typeof LegalSexSchema>;

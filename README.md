@@ -7,6 +7,7 @@ sample clients are fictional. Cosper responses are simulations; no external prov
 The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests.
 Completed stretch goals are [round-trip consistency](#round-trip-consistency),
 [nationality normalisation](#nationality-normalisation) and
+[capability/versioning awareness](#canonical-versioning-and-capability-discovery), plus
 [OpenAPI/Swagger tooling](#openapi-and-swagger).
 
 ## Quick start
@@ -132,8 +133,9 @@ The final response has this envelope; `request` contains the complete generated 
 }
 ```
 
-`GET /v1/providers` returns registered slugs and their supported operations. Both POST routes
-return 200 on success. `build-request` consumes a canonical client directly, not an envelope.
+`GET /v1/providers` returns registered slugs, their supported operations and the canonical model
+version that those operations consume or produce. Both POST routes return 200 on success.
+`build-request` consumes a canonical client directly, not an envelope.
 
 An example validation failure:
 
@@ -185,6 +187,13 @@ discards unrelated extra fields. Canonical input is stricter: unknown properties
 nullable fields must be present, and collections must be arrays. Only omitted marital status
 defaults to `unknown`; explicit null marital status is invalid. Generated output is validated
 too, but a defect in our generated output is a 500, not a caller's 422.
+
+Every successful canonical client explicitly contains `"schema_version": "v1"`. This is the
+canonical-model version, distinct from the `/v1` HTTP route prefix, the application release
+number and OpenAPI's version. `build-request` also accepts an otherwise valid legacy canonical
+client with no `schema_version`, supplying `v1` at that boundary only. Other values are rejected
+with the usual safe 422 response. New normalisers must always produce the field; its absence is
+an internal 500 rather than a silently repaired adapter defect.
 
 This distinction makes missing data explicit without equating it with bad data. Optional
 provider text that is missing, null or blank becomes null; missing/null collections become
@@ -259,9 +268,9 @@ Recorded local checks and acceptance evidence are in [verification](docs/verific
 4. Add independent mapping/edge tests and run `npm run check`.
 
 No HTTP route changes are needed. The registry derives capabilities, rejects duplicate or
-invalid slugs and rejects providers with no operations. It snapshots registrations and does
-not expose mutable internal lists. The test-only Delta adapter proves both operations can be
-added by registration alone while retaining exact concrete request types.
+invalid slugs, non-function operations and providers with no operations. It snapshots
+registrations and does not expose mutable internal lists. The test-only Delta adapter proves
+both operations can be added by registration alone while retaining exact concrete request types.
 
 ## Test and review
 
@@ -300,9 +309,10 @@ type-error suppressions are used to make application checks pass.
 
 ## Requirement coverage
 
-Approved implementation scope: all seven core requirements, the **round-trip consistency**
-stretch goal, and local QA tooling. The tables distinguish completed work from deferred optional
-work. Numbers below follow the exercise brief's order, rather than implementation priority.
+Approved implementation scope: all seven core requirements, the round-trip consistency,
+nationality normalisation, capability/versioning awareness and tooling/ergonomics stretch goals.
+The tables distinguish completed work from deferred optional work. Numbers below follow the
+exercise brief's order, rather than implementation priority.
 
 ### Core requirements — approved and implemented
 
@@ -324,8 +334,37 @@ work. Numbers below follow the exercise brief's order, rather than implementatio
 | 2. Round-trip consistency | **Approved and implemented:** directly compare both samples' shared canonical data and preserve legitimate differences. | [Dedicated consistency suite](tests/unit/consistency.test.ts), [explanation below](#round-trip-consistency) |
 | 3. Nationality / country normalisation | **Approved and implemented:** country names/codes and documented nationality labels produce a bounded alpha-2 nationality code. | [Catalogue and canonical schema](src/domain/countries.ts), [normalisation helper](src/shared/countries.ts), [mapping tests](tests/unit/countries.test.ts) |
 | 4. Second resource end-to-end | **Not started.** Client is the only resource. | [Current resource contract](src/domain/client.ts) |
-| 5. Capability / versioning awareness | **Partially covered by core work; not claimed as a completed stretch goal.** Registry-derived capabilities exist, but explicit canonical versioning is not implemented. | [Capability derivation](src/registry/registry.ts), [registration-only extension test](tests/api/extensibility.test.ts) |
+| 5. Capability / versioning awareness | **Approved and implemented:** the registry derives operations from actual adapter methods and reports an explicit canonical `v1`; every normalised client declares `schema_version: "v1"`. | [Versioned canonical schemas](src/domain/client.ts), [capability registry](src/registry/registry.ts), [API/extension tests](tests/api/app.test.ts) |
 | 6. Tooling & ergonomics | **Approved and implemented:** repository hooks, shared QA commands, CI, safe structured logging and source-derived OpenAPI/Swagger documentation. | [OpenAPI contract](src/http/openapi.ts), [hook installer](scripts/install-hooks.mjs), [QA scripts](package.json), [CI](.github/workflows/qa.yml) |
+
+## Canonical versioning and capability discovery
+
+`schema_version: "v1"` identifies the complete canonical client contract. Its nested address
+and contact shapes are part of that version; it does not declare a provider API version. The
+normalise routes return the field explicitly. The build route accepts the explicit v1 value or
+an omitted value from a legacy v1 caller, then passes an explicit v1 client to the provider
+adapter. It rejects any other version as invalid caller data.
+
+`GET /v1/providers` is generated from the registry, rather than a hard-coded list. Each entry
+contains `slug`, `supports` and `canonical_version`. Registering a provider with `normalise`,
+`buildRequest`, or both automatically updates discovery and route dispatch. The API test proves
+this with a fourth provider without changing any HTTP route code.
+
+Future incompatible canonical changes require a new contract identifier such as `v2` and an
+explicit compatibility policy. This implementation never interprets an unknown version as v1.
+Clients that reject additional JSON response properties should update to accept
+`schema_version` before consuming newly normalised responses.
+
+Inspect the capability contract locally:
+
+```sh
+curl --fail-with-body -sS "$ZEROKEY_URL/v1/providers"
+
+curl --fail-with-body -sS \
+  -H 'Content-Type: application/json' \
+  --data-binary @fixtures/acorn-client.json \
+  "$ZEROKEY_URL/v1/acorn/clients/normalise"
+```
 
 ## OpenAPI and Swagger
 

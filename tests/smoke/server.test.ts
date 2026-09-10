@@ -95,14 +95,17 @@ describe("real Node HTTP server", () => {
         });
         expect(normalised.status).toBe(200);
         const canonical: unknown = await normalised.json();
-        expect(canonical).toMatchObject({ nationality: "GB" });
+        expect(canonical).toMatchObject({ nationality: "GB", schema_version: "v1" });
         const beaconNormalised = await fetch(`${url}/v1/beacon/clients/normalise`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(fixture("beacon-client")),
         });
         expect(beaconNormalised.status).toBe(200);
-        expect(await beaconNormalised.json()).toMatchObject({ nationality: "GB" });
+        expect(await beaconNormalised.json()).toMatchObject({
+          nationality: "GB",
+          schema_version: "v1",
+        });
         const built = await fetch(`${url}/v1/cosper/clients/build-request`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
