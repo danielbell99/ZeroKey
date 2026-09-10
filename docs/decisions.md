@@ -85,3 +85,22 @@ presentation matches the supplied +44 7700 900123 target; other international nu
 Cosper cannot retain title, middle names, nationality, county, multiple addresses or secondary
 contacts, and collapses some enums. These losses are intentional and local to this adapter.
 The returned created response is deterministic and labelled simulated; no network call occurs.
+
+## Core 4 — HTTP and process boundary
+
+Three Hono routes dispatch through a registry, with no slug-specific route logic. The app
+factory is separate from the listening process. Provider/operation lookup precedes body
+parsing. JSON content type is required; bodies are limited to 1 MiB. Errors distinguish
+unknown provider (404), unsupported operation (400), malformed JSON (400), size (413),
+content type (415), caller validation (422) and internal/output-contract defects (500).
+
+Every response has a generated X-Request-Id; errors include the same ID. Error issue paths
+refer to original provider fields. Error messages do not interpolate raw values or unknown
+keys. Unexpected errors log only a fixed event, correlation ID, registered provider and
+operation. Logging failures cannot expose exceptions or break the safe response.
+
+The server binds only to 127.0.0.1, defaults to port 3000 and validates PORT (1–65535).
+Internal server tests use ephemeral port zero. SIGINT/SIGTERM close the listener and idle
+connections, with a five-second bound for active connections. Occupied ports fail clearly;
+no unrelated process is stopped. Smoke tests exercise both the real HTTP adapter and the
+compiled command-line entry point, including startup failures and both shutdown signals.

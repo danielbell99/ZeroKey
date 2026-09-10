@@ -4,6 +4,15 @@ export default defineConfig({
   test: {
     clearMocks: true,
     projects: [
+      { test: { name: "api", environment: "node", include: ["tests/api/**/*.test.ts"] } },
+      {
+        test: {
+          name: "smoke",
+          environment: "node",
+          include: ["tests/smoke/**/*.test.ts"],
+          testTimeout: 15000,
+        },
+      },
       {
         test: {
           name: "unit",
