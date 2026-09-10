@@ -1,0 +1,48 @@
+{
+  "id": 90210,
+  "person": {
+    "title": "Mrs",
+    "firstName": "Priya",
+    "middleName": null,
+    "lastName": "Chandra-Bose",
+    "dateOfBirth": "1985-07-02",
+    "niNumber": "QQ123456C",
+    "gender": "Female",
+    "maritalStatus": "Living Together",
+    "nationalityCountry": {
+      "name": "United Kingdom",
+      "isoCode": "GB"
+    }
+  },
+  "addresses": [
+    {
+      "kind": "Home",
+      "isPrimary": true,
+      "buildingName": "Flat 4",
+      "street": "12 Vereker Road",
+      "locality": null,
+      "town": "London",
+      "region": "Greater London",
+      "postcode": "W14 9JR",
+      "countryName": "United Kingdom",
+      "movedIn": "2016-03-01"
+    }
+  ],
+  "contactPoints": [
+    {
+      "channel": "EmailAddress",
+      "detail": "priya.cb@example.co.uk",
+      "preferred": true
+    },
+    {
+      "channel": "MobilePhone",
+      "detail": "+44 7700 900123",
+      "preferred": true
+    },
+    {
+      "channel": "EmailAddress",
+      "detail": "priya@oldmail.example",
+      "preferred": false
+    }
+  ]
+}

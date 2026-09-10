@@ -1,0 +1,15 @@
+{
+  "ClientRef": "90210",
+  "Forename": "Priya",
+  "Surname": "Chandra-Bose",
+  "DateOfBirth": "02/07/1985",
+  "Sex": 1,
+  "MaritalStatus": 3,
+  "AddressLine1": "Flat 4",
+  "AddressLine2": "12 Vereker Road",
+  "Town": "London",
+  "Postcode": "W14 9JR",
+  "Country": "United Kingdom",
+  "Email": "priya.cb@example.co.uk",
+  "Telephone": "+44 7700 900123"
+}

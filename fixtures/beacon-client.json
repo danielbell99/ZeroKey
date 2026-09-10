@@ -1,0 +1,66 @@
+{
+  "recordId": "c0ffee7a-1e4b-2c9d-3e00-000000000001",
+  "attributes": [
+    {
+      "key": "firstname",
+      "value": "Priya"
+    },
+    {
+      "key": "middlename",
+      "value": ""
+    },
+    {
+      "key": "lastname",
+      "value": "Chandra-Bose"
+    },
+    {
+      "key": "birthdate",
+      "value": "02/07/1985"
+    },
+    {
+      "key": "t4a_ninumber",
+      "value": "QQ 12 34 56 C"
+    },
+    {
+      "key": "t4a_nationality",
+      "value": "British"
+    }
+  ],
+  "formattedValues": [
+    {
+      "key": "title",
+      "value": "Mrs"
+    },
+    {
+      "key": "gendercode",
+      "value": "Female"
+    },
+    {
+      "key": "familystatuscode",
+      "value": "Cohabiting"
+    }
+  ],
+  "addresses": [
+    {
+      "line1": "Flat 4, 12 Vereker Road",
+      "line2": "",
+      "city": "London",
+      "county": "Greater London",
+      "postcode": "W14 9JR",
+      "country": "GBR",
+      "primary": "true"
+    }
+  ],
+  "contacts": [
+    {
+      "type": 1,
+      "value": "priya.cb@example.co.uk",
+      "isPrimary": true
+    },
+    {
+      "type": 2,
+      "value": "07700900123",
+      "isPrimary": true
+    }
+  ]
+}
