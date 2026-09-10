@@ -21,6 +21,7 @@ type MaritalStatus =
 type CanonicalCountryCode = 'GB' | 'IE' | 'FR' | 'DE' | 'US' | 'CA' | 'AU' | 'NZ';
 
 interface CanonicalClient {
+  schema_version: 'v1'; // Canonical contract identifier, distinct from the HTTP route version.
   id: string;
   title: string | null;
   first_name: string | null;

@@ -1,8 +1,9 @@
-import type { CanonicalClient } from "../../src/domain/client.js";
+import { CANONICAL_V1_VERSION, type CanonicalClient } from "../../src/domain/client.js";
 
 /** Independent input builder; deliberately does not call production normalisation. */
 export function minimalClient(overrides: Partial<CanonicalClient> = {}): CanonicalClient {
   return {
+    schema_version: CANONICAL_V1_VERSION,
     id: "client-1",
     title: null,
     first_name: null,

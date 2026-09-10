@@ -150,6 +150,27 @@ The document uses named canonical/provider/Cosper schemas from the same runtime 
 Examples use synthetic values and the API tests assert that supplied fixture NI and email values
 do not appear in the generated specification.
 
+## Capability and canonical versioning
+
+Canonical normalisation now emits the strict literal `schema_version: "v1"`. The registry-derived
+provider list also reports `canonical_version: "v1"` beside operations derived from actual
+adapter methods. Build-request accepts a legacy canonical v1 payload that omits the field, adds
+the value during boundary validation, and rejects every explicit non-v1 value before provider
+dispatch. The exact Cosper request remains unchanged because canonical metadata does not cross
+the outbound provider boundary.
+
+The implementation was verified on 10 September 2026 with **Node 24.21.0 and npm 12.0.2**:
+
+| Check | Observed result |
+| --- | --- |
+| Canonical / registry / API checks | 289 unit/API tests passed, including explicit output version, legacy input, invalid versions, generated-output defects, provider discovery and generated OpenAPI contracts |
+| `npm run check` | Complete aggregate gate passed: type checks, Biome, 289 unit/API tests, coverage thresholds, production build, six smoke tests and a zero-vulnerability audit |
+| `git diff --check` | No whitespace errors |
+
+The dedicated assertions distinguish caller errors from implementation defects: unsupported
+versions return a safe 422 and never call a provider builder; an adapter that omits the version
+returns a safe 500. Compiled-server smoke coverage confirms both inbound providers return v1.
+
 ## Acceptance evidence
 
 | Core requirement | Evidence |

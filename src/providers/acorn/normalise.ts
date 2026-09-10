@@ -1,4 +1,5 @@
 import {
+  CANONICAL_V1_VERSION,
   type CanonicalClient,
   CanonicalClientSchema,
   type CanonicalContactDetail,
@@ -68,6 +69,7 @@ export function normaliseAcorn(input: unknown): CanonicalClient {
   const middle_names = normaliseName(person?.middleName);
   const last_name = normaliseName(person?.lastName);
   const client: CanonicalClient = {
+    schema_version: CANONICAL_V1_VERSION,
     id: String(raw.id),
     title: normaliseName(person?.title),
     first_name,

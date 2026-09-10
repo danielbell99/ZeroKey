@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import type { CanonicalClient } from "../domain/client.js";
+import { CANONICAL_V1_VERSION, type CanonicalClient } from "../domain/client.js";
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
 export type JsonObject = { [key: string]: JsonValue };
@@ -28,6 +28,7 @@ export const ProviderCapabilitySchema = z
   .strictObject({
     slug: z.string().regex(/^[a-z][a-z0-9-]*$/u),
     supports: z.array(OperationSchema).min(1),
+    canonical_version: z.literal(CANONICAL_V1_VERSION),
   })
   .openapi("ProviderCapability");
 export const ProviderCapabilitiesSchema = z.array(ProviderCapabilitySchema);
@@ -38,6 +39,12 @@ export function createRegistry(adapters: readonly ProviderAdapter[]) {
     if (!/^[a-z][a-z0-9-]*$/u.test(adapter.slug)) throw new Error("Invalid provider slug");
     if (providers.has(adapter.slug)) throw new Error("Duplicate provider slug");
     if (!adapter.normalise && !adapter.buildRequest) throw new Error("Provider has no operations");
+    if (adapter.normalise !== undefined && typeof adapter.normalise !== "function") {
+      throw new Error("Provider normalise operation must be a function");
+    }
+    if (adapter.buildRequest !== undefined && typeof adapter.buildRequest !== "function") {
+      throw new Error("Provider build-request operation must be a function");
+    }
     providers.set(adapter.slug, Object.freeze({ ...adapter }));
   }
   return Object.freeze({
@@ -47,6 +54,7 @@ export function createRegistry(adapters: readonly ProviderAdapter[]) {
     list(): Array<z.output<typeof ProviderCapabilitySchema>> {
       return [...providers.values()].map((adapter) => ({
         slug: adapter.slug,
+        canonical_version: CANONICAL_V1_VERSION,
         supports: [
           ...(adapter.normalise ? ["normalise" as const] : []),
           ...(adapter.buildRequest ? ["build-request" as const] : []),

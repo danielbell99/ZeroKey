@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { CANONICAL_V1_VERSION } from "../../src/domain/client.js";
 import { createApp } from "../../src/http/app.js";
 import { createRegistry } from "../../src/registry/registry.js";
 import { minimalClient } from "../helpers/client.js";
@@ -17,9 +18,13 @@ describe("HTTP success contracts", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([
-      { slug: "acorn", supports: ["normalise"] },
-      { slug: "beacon", supports: ["normalise"] },
-      { slug: "cosper", supports: ["build-request"] },
+      { slug: "acorn", supports: ["normalise"], canonical_version: CANONICAL_V1_VERSION },
+      { slug: "beacon", supports: ["normalise"], canonical_version: CANONICAL_V1_VERSION },
+      {
+        slug: "cosper",
+        supports: ["build-request"],
+        canonical_version: CANONICAL_V1_VERSION,
+      },
     ]);
     expect(response.headers.get("x-request-id")).toMatch(/^[a-f\d-]{36}$/u);
   });
@@ -46,6 +51,22 @@ describe("HTTP success contracts", () => {
       request: fixture("cosper-client-request"),
       response: { status: "created", clientRef: "90210", simulated: true },
     });
+  });
+  it("accepts an otherwise valid legacy v1 client and supplies its version before building", async () => {
+    const { schema_version: _version, ...legacyClient } = expectedAcorn();
+    const buildRequest = vi.fn((client) => ({
+      request: { schemaVersionReceived: client.schema_version },
+      response: { status: "created" as const, clientRef: client.id, simulated: true as const },
+    }));
+    const response = await createApp({
+      registry: createRegistry([{ slug: "legacy", buildRequest }]),
+    }).request("/v1/legacy/clients/build-request", json(legacyClient));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      request: { schemaVersionReceived: CANONICAL_V1_VERSION },
+      response: { status: "created", clientRef: "90210", simulated: true },
+    });
+    expect(buildRequest).toHaveBeenCalledWith(expect.objectContaining({ schema_version: "v1" }));
   });
 });
 
@@ -100,7 +121,8 @@ describe("API documentation contracts", () => {
     expect(document.components.schemas).toMatchObject({
       AcornClient: expect.any(Object),
       BeaconClient: expect.any(Object),
-      CanonicalClient: expect.any(Object),
+      CanonicalClientV1: expect.any(Object),
+      CanonicalClientV1Input: expect.any(Object),
       CosperBuildResult: expect.any(Object),
       ErrorEnvelope: expect.any(Object),
       ProviderCapability: expect.any(Object),
@@ -108,6 +130,21 @@ describe("API documentation contracts", () => {
     const serialised = JSON.stringify(document);
     expect(serialised).not.toContain("QQ123456C");
     expect(serialised).not.toContain("priya.cb@example.co.uk");
+    const output = document.components.schemas.CanonicalClientV1 as {
+      required?: string[];
+      properties?: { schema_version?: { enum?: string[] } };
+    };
+    const input = document.components.schemas.CanonicalClientV1Input as {
+      required?: string[];
+      properties?: { schema_version?: { default?: string; enum?: string[] } };
+    };
+    expect(output.required).toContain("schema_version");
+    expect(output.properties?.schema_version?.enum).toEqual([CANONICAL_V1_VERSION]);
+    expect(input.required).not.toContain("schema_version");
+    expect(input.properties?.schema_version).toMatchObject({
+      default: CANONICAL_V1_VERSION,
+      enum: [CANONICAL_V1_VERSION],
+    });
   });
 
   it("serves Swagger UI against the same-origin OpenAPI document", async () => {
@@ -122,6 +159,26 @@ describe("API documentation contracts", () => {
 });
 
 describe("HTTP client errors", () => {
+  it.each(["v2", "V1", " v1 ", null, 1, true, {}, []])(
+    "rejects unsupported canonical version %j before the builder runs",
+    async (schema_version) => {
+      const buildRequest = vi.fn(() => ({
+        request: { shouldNotRun: true },
+        response: { status: "created" as const, clientRef: "unexpected", simulated: true as const },
+      }));
+      const response = await createApp({
+        registry: createRegistry([{ slug: "versioned", buildRequest }]),
+      }).request(
+        "/v1/versioned/clients/build-request",
+        json({ ...minimalClient(), schema_version }),
+      );
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({
+        error: { code: "validation_failed", issues: [{ path: ["schema_version"] }] },
+      });
+      expect(buildRequest).not.toHaveBeenCalled();
+    },
+  );
   it.each([
     ["/v1/missing/clients/normalise", 404, "unknown_provider"],
     ["/v1/cosper/clients/normalise", 400, "unsupported_operation"],
@@ -308,6 +365,23 @@ describe("unexpected failures stay distinct from caller errors", () => {
       },
     }).request("/v1/broken/clients/normalise", json({}));
     expect(response.status).toBe(500);
+  });
+  it("treats a missing generated canonical version as an internal defect", async () => {
+    const registry = createRegistry([
+      {
+        slug: "broken-version",
+        normalise: () => {
+          const { schema_version: _version, ...legacy } = minimalClient();
+          return legacy as never;
+        },
+      },
+    ]);
+    const response = await createApp({ registry, logFailure: vi.fn() }).request(
+      "/v1/broken-version/clients/normalise",
+      json({}),
+    );
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ error: { code: "internal_error" } });
   });
   it("rejects a generated non-JSON request as an internal defect", async () => {
     const registry = createRegistry([

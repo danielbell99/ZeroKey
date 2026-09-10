@@ -1,4 +1,5 @@
 import {
+  CANONICAL_V1_VERSION,
   type CanonicalClient,
   CanonicalClientSchema,
   type CanonicalContactDetail,
@@ -47,6 +48,7 @@ export function normaliseBeacon(input: unknown): CanonicalClient {
   const middle_names = normaliseName(attributes.middlename);
   const last_name = normaliseName(attributes.lastname);
   const client: CanonicalClient = {
+    schema_version: CANONICAL_V1_VERSION,
     id: raw.recordId,
     title: normaliseName(formatted.title),
     first_name,
