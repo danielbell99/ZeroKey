@@ -58,14 +58,7 @@ export function createApp(options: AppOptions = {}) {
     options.logFailure ?? ((event: FailureEvent) => console.error(JSON.stringify(event)));
   const app = new OpenAPIHono<AppEnv>();
 
-  app.use("*", async (c, next) => {
-    const requestId = randomUUID();
-    c.set("requestId", requestId);
-    c.header("X-Request-Id", requestId);
-    await next();
-  });
-
-  app.onError((error, c) => {
+  const handleFailure = (error: unknown, c: Context<AppEnv>) => {
     if (error instanceof PayloadValidationError) {
       return errorResponse(c, 422, "validation_failed", "Payload validation failed", error.issues);
     }
@@ -81,6 +74,19 @@ export function createApp(options: AppOptions = {}) {
       // A broken diagnostic sink must not replace a safe response with an unhandled error.
     }
     return errorResponse(c, 500, "internal_error", "An unexpected error occurred");
+  };
+  app.onError(handleFailure);
+  app.use("*", async (c, next) => {
+    const requestId = randomUUID();
+    c.set("requestId", requestId);
+    c.header("X-Request-Id", requestId);
+    try {
+      await next();
+    } catch (error: unknown) {
+      // Hono handles Error instances; JavaScript also permits throwing other values.
+      // Those escape onError and must enter the same safe response/logging boundary.
+      return handleFailure(error, c);
+    }
   });
   app.notFound((c) => errorResponse(c, 404, "not_found", "Route not found"));
   // The routes retain their custom parser/error pipeline; these contracts generate the same API spec.
