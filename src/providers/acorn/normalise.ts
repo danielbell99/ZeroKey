@@ -5,7 +5,7 @@ import {
   type LegalSex,
   type MaritalStatus,
 } from "../../domain/client.js";
-import { countryCode } from "../../shared/countries.js";
+import { countryCode, normaliseNationality } from "../../shared/countries.js";
 import {
   enumKey,
   fullName,
@@ -14,7 +14,7 @@ import {
   normaliseName,
   normaliseNi,
 } from "../../shared/normalisation.js";
-import { parseInput } from "../../shared/validation.js";
+import { PayloadValidationError, parseInput } from "../../shared/validation.js";
 import { AcornClientSchema } from "./schema.js";
 
 const sexes = new Map<string, LegalSex>([
@@ -39,6 +39,28 @@ const channels = new Map<string, CanonicalContactDetail["type"]>([
   ["landline", "telephone"],
 ]);
 
+function acornNationality(
+  nationalityCountry: { name: string | null; isoCode: string | null } | null | undefined,
+) {
+  const fromName = normaliseNationality(nationalityCountry?.name);
+  const fromCode = normaliseNationality(nationalityCountry?.isoCode);
+  if (fromName !== null && fromCode !== null && fromName !== fromCode) {
+    throw new PayloadValidationError([
+      {
+        path: ["person", "nationalityCountry", "name"],
+        code: "conflicting_nationality",
+        message: "Recognised nationality fields disagree",
+      },
+      {
+        path: ["person", "nationalityCountry", "isoCode"],
+        code: "conflicting_nationality",
+        message: "Recognised nationality fields disagree",
+      },
+    ]);
+  }
+  return fromName ?? fromCode;
+}
+
 export function normaliseAcorn(input: unknown): CanonicalClient {
   const raw = parseInput(AcornClientSchema, input);
   const person = raw.person;
@@ -56,7 +78,7 @@ export function normaliseAcorn(input: unknown): CanonicalClient {
     ni_number: normaliseNi(person?.niNumber),
     legal_sex: sexes.get(enumKey(person?.gender)) ?? null,
     marital_status: maritalStatuses.get(enumKey(person?.maritalStatus)) ?? "unknown",
-    nationality: person?.nationalityCountry?.name ?? person?.nationalityCountry?.isoCode ?? null,
+    nationality: acornNationality(person?.nationalityCountry),
     addresses: raw.addresses
       .map((address) => {
         const lines = [address.buildingName, address.street, address.locality].filter(

@@ -9,16 +9,13 @@ import { normaliseAcorn } from "../../src/providers/acorn/normalise.js";
 import { normaliseBeacon } from "../../src/providers/beacon/normalise.js";
 import { deepFreeze, fixture } from "../helpers/fixtures.js";
 
-type SharedClient = Omit<
-  CanonicalClient,
-  "id" | "nationality" | "addresses" | "contact_details"
-> & {
+type SharedClient = Omit<CanonicalClient, "id" | "addresses" | "contact_details"> & {
   addresses: Array<Omit<CanonicalAddress, "move_in_date">>;
   contact_details: CanonicalContactDetail[];
 };
 
 function sharedClient(client: CanonicalClient): SharedClient {
-  const { id: _id, nationality: _nationality, addresses, contact_details, ...shared } = client;
+  const { id: _id, addresses, contact_details, ...shared } = client;
   return {
     ...shared,
     addresses: addresses.map(({ move_in_date: _moveInDate, ...address }) => address),
@@ -36,6 +33,7 @@ const expectedSharedClient = {
   ni_number: "QQ123456C",
   legal_sex: "female",
   marital_status: "cohabiting",
+  nationality: "GB",
   addresses: [
     {
       primary: true,
@@ -81,13 +79,11 @@ describe("sample cross-provider consistency", () => {
     expect(beaconInput).toStrictEqual(beaconOriginal);
   });
 
-  it("retains documented differences that are not evidence of a mapping disagreement", () => {
+  it("retains provider-specific differences that are not mapping disagreements", () => {
     const { acorn, beacon } = normaliseSampleClients();
 
     expect(acorn.id).toBe("90210");
     expect(beacon.id).toBe("c0ffee7a-1e4b-2c9d-3e00-000000000001");
-    expect(acorn.nationality).toBe("United Kingdom");
-    expect(beacon.nationality).toBe("British");
     expect(acorn.addresses[0]?.move_in_date).toBe("2016-03-01");
     expect(beacon.addresses[0]?.move_in_date).toBeNull();
     expect(acorn.contact_details.filter((contact) => !contact.primary)).toStrictEqual([

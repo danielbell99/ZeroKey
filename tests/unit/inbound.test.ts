@@ -123,17 +123,80 @@ describe("missing, blank and invalid data", () => {
       ni_number: "QQ123456C",
     });
   });
-  it("keeps free-text nationality, including a supplied Acorn code fallback", () => {
+  it.for([
+    { code: "GB", name: "United Kingdom", alpha3: "GBR", demonym: "British" },
+    { code: "IE", name: "Ireland", alpha3: "IRL", demonym: "Irish" },
+    { code: "FR", name: "France", alpha3: "FRA", demonym: "French" },
+    { code: "DE", name: "Germany", alpha3: "DEU", demonym: "German" },
+    { code: "US", name: "United States", alpha3: "USA", demonym: "American" },
+    { code: "CA", name: "Canada", alpha3: "CAN", demonym: "Canadian" },
+    { code: "AU", name: "Australia", alpha3: "AUS", demonym: "Australian" },
+    { code: "NZ", name: "New Zealand", alpha3: "NZL", demonym: "New Zealander" },
+  ] as const)(
+    "normalises $code nationality aliases in both providers",
+    ({ code, name, alpha3, demonym }) => {
+      expect(
+        normaliseAcorn({ id: 1, person: { nationalityCountry: { name, isoCode: alpha3 } } })
+          .nationality,
+      ).toBe(code);
+      expect(
+        normaliseBeacon({
+          recordId: "b",
+          attributes: [{ key: "t4a_nationality", value: ` ${demonym} ` }],
+        }).nationality,
+      ).toBe(code);
+    },
+  );
+  it("uses either recognised Acorn field and degrades unknown nationality to null", () => {
     expect(
       normaliseAcorn({ id: 1, person: { nationalityCountry: { name: " ", isoCode: "GB" } } })
         .nationality,
     ).toBe("GB");
     expect(
+      normaliseAcorn({ id: 1, person: { nationalityCountry: { name: "Spain", isoCode: null } } })
+        .nationality,
+    ).toBeNull();
+    expect(
       normaliseBeacon({
         recordId: "b",
-        attributes: [{ key: "t4a_nationality", value: " British " }],
+        attributes: [{ key: "t4a_nationality", value: "British citizen" }],
       }).nationality,
-    ).toBe("British");
+    ).toBeNull();
+  });
+  it("rejects Acorn nationality fields that resolve to different recognised countries", () => {
+    try {
+      normaliseAcorn({
+        id: 1,
+        person: { nationalityCountry: { name: "British", isoCode: "FRA" } },
+      });
+      expect.fail("Expected a nationality conflict");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PayloadValidationError);
+      expect((error as PayloadValidationError).issues).toStrictEqual([
+        {
+          path: ["person", "nationalityCountry", "name"],
+          code: "conflicting_nationality",
+          message: "Recognised nationality fields disagree",
+        },
+        {
+          path: ["person", "nationalityCountry", "isoCode"],
+          code: "conflicting_nationality",
+          message: "Recognised nationality fields disagree",
+        },
+      ]);
+    }
+  });
+  it("does not infer nationality from an address country", () => {
+    expect(
+      normaliseAcorn({ id: 1, addresses: [{ countryName: "United Kingdom" }] }).nationality,
+    ).toBeNull();
+    expect(
+      normaliseBeacon({
+        recordId: "b",
+        attributes: [{ key: "t4a_nationality", value: "French" }],
+        addresses: [{ country: "GB" }],
+      }).nationality,
+    ).toBe("FR");
   });
   it.each([
     null,

@@ -18,6 +18,8 @@ type MaritalStatus =
   | 'widowed'
   | 'unknown';
 
+type CanonicalCountryCode = 'GB' | 'IE' | 'FR' | 'DE' | 'US' | 'CA' | 'AU' | 'NZ';
+
 interface CanonicalClient {
   id: string;
   title: string | null;
@@ -29,7 +31,7 @@ interface CanonicalClient {
   ni_number: string | null; // Normalised: upper-case, no spaces.
   legal_sex: LegalSex | null;
   marital_status: MaritalStatus; // Never null; default to unknown.
-  nationality: string | null;
+  nationality: CanonicalCountryCode | null; // Bounded normalisation; never inferred from residence.
   addresses: CanonicalAddress[];
   contact_details: CanonicalContactDetail[];
 }
@@ -67,6 +69,8 @@ interface CanonicalContactDetail {
 - Acorn `Living Together` maps to `cohabiting`; `Engaged` maps to `engaged`; and `Unspecified` gender maps to `unspecified`.
 - Beacon `Intend to Marry` maps to `engaged`; `Civil Partnership` maps to `civil-partner`; and `Non-Binary` maps to `other`.
 - Beacon `DD/MM/YYYY` dates become ISO `YYYY-MM-DD`; its spaced NI number becomes upper-case without spaces; and its ISO-3 country code becomes ISO-2.
+- Nationality names, codes and labels map through the same bounded country vocabulary; unsupported
+  nationality becomes null and contradictory recognised Acorn values produce a validation error.
 - Cosper requires a `DD/MM/YYYY` date, numeric sex and marital-status codes, one flattened address, a full country name, and one email and telephone number.
 
 The implementation must document choices for `engaged` and a null legal sex because Cosper has no direct equivalent. It must also document primary-contact tie-break and fallback rules.

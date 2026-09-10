@@ -133,6 +133,28 @@ describe("HTTP client errors", () => {
       error: { issues: [{ path: ["addresses", 0, "country"], code: "unsupported_country" }] },
     });
   });
+  it("returns safe, original-path errors for conflicting Acorn nationality", async () => {
+    const response = await createApp().request(
+      "/v1/acorn/clients/normalise",
+      json({
+        id: 1,
+        person: { nationalityCountry: { name: "British", isoCode: "FRA" } },
+      }),
+    );
+    expect(response.status).toBe(422);
+    const text = await response.text();
+    expect(text).not.toContain("British");
+    expect(text).not.toContain("FRA");
+    expect(JSON.parse(text)).toMatchObject({
+      error: {
+        code: "validation_failed",
+        issues: [
+          { path: ["person", "nationalityCountry", "name"], code: "conflicting_nationality" },
+          { path: ["person", "nationalityCountry", "isoCode"], code: "conflicting_nationality" },
+        ],
+      },
+    });
+  });
   it.each([false, true])("limits oversized JSON (declared length: %s)", async (declared) => {
     const body = JSON.stringify({ id: 1, extra: "x".repeat(1024 * 1024) });
     const headers = new Headers({ "Content-Type": "application/json" });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CanonicalCountryCodeSchema } from "./countries.js";
 
 /** Date-only values never pass through a timezone-dependent Date constructor. */
 export const IsoDateSchema = z.iso.date().refine((value) => !value.startsWith("0000-"), {
@@ -74,7 +75,7 @@ export const CanonicalClientSchema = z.strictObject({
   ni_number: NiNumberSchema.nullable(),
   legal_sex: LegalSexSchema.nullable(),
   marital_status: MaritalStatusSchema.default("unknown"),
-  nationality: NullableTextSchema,
+  nationality: CanonicalCountryCodeSchema.nullable(),
   addresses: z.array(CanonicalAddressSchema),
   contact_details: z.array(CanonicalContactDetailSchema),
 });

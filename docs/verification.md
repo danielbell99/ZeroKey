@@ -57,8 +57,8 @@ projection with strict equality. The projection includes all common personal fie
 address without Acorn-only `move_in_date`, and the ordered primary email/mobile contacts. It is
 also checked against an independently authored expected value from the exercise brief.
 
-The test deliberately excludes source IDs and nationality, and asserts separately that Acorn
-retains its move-in date and non-primary email while Beacon correctly lacks them. This proves
+The test excludes only source IDs. Nationality now normalises to `GB` for both providers, while
+Acorn retains its move-in date and non-primary email and Beacon correctly lacks them. This proves
 equivalence without treating provider-specific detail as an inconsistency.
 
 Both raw inputs and canonical outputs are deeply frozen. The shared projection only selects
@@ -94,7 +94,35 @@ default Node/npm installation was not changed.
 
 The 242 unit/API tests include the two consistency tests; the six smoke tests are a separate
 suite. Coverage percentages remain those recorded above because no production code changed.
-This branch remains local; no GitHub CI or remote review result is claimed for it.
+The branch later passed GitHub QA and merged in [PR #2](https://github.com/danielbell99/ZeroKey/pull/2);
+the measurements in this section remain local runner evidence.
+
+## Nationality normalisation
+
+The nationality stretch goal replaces free-text canonical nationality with a bounded alpha-2
+country code or null. The shared country catalogue accepts the eight supported country codes,
+alpha-3 codes, English names and documented demonyms. Both supplied fixtures now normalise to
+`GB`; their original PDF data was not changed. Unsupported nationality becomes null, and
+contradictory recognised Acorn name/code fields return safe, original-path 422 issues.
+
+On 10 September 2026, the implementation passed the complete gate with **Node 24.21.0 and
+npm 12.0.2**:
+
+| Check | Observed result |
+| --- | --- |
+| Focused nationality suites | 5 files, 214 tests passed |
+| `npm run typecheck` | Source/test and production checks passed |
+| `npm run lint` | 41 files checked; no changes required |
+| `npm test` | 10 files, 276 unit/API tests passed |
+| `npm run coverage` | 276 tests passed; transformation thresholds passed |
+| `npm run test:smoke` | Production build passed; 6 real-server tests passed |
+| `npm audit --audit-level=high` | 0 vulnerabilities |
+| `npm run check` | Complete aggregate gate passed |
+| `git diff --check` | No whitespace errors |
+
+The smoke suite now exercises both inbound providers through the compiled HTTP server and
+confirms their canonical nationality is `GB`; it then verifies Acorn can still build the exact
+Cosper target request. No deployment or external provider call is involved.
 
 ## Acceptance evidence
 
