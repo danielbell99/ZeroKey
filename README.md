@@ -4,7 +4,35 @@ A local, backend-only integration slice: **Acorn or Beacon → canonical Client 
 It implements the seven core requirements from the take-home exercise. The providers and
 sample clients are fictional. Cosper responses are simulations; no external provider is called.
 
-## Run it
+## Quick start
+
+Prerequisite: Node 24.21.0 and npm 12.0.2. If you use nvm, run `nvm install && nvm use` first.
+
+```sh
+# Terminal 1 — from the repository root
+npm ci
+npm run dev
+
+# Terminal 2 — confirm the service is running
+curl --fail-with-body -sS http://127.0.0.1:3000/v1/providers
+```
+
+Normalise a supplied fixture:
+
+```sh
+curl --fail-with-body -sS \
+  -H 'Content-Type: application/json' \
+  --data-binary @fixtures/acorn-client.json \
+  http://127.0.0.1:3000/v1/acorn/clients/normalise
+```
+
+Run the complete automated check suite:
+
+```sh
+npm run check
+```
+
+## Detailed setup
 
 Use **Node 24.21.0 LTS** and **npm 12.0.2**. The Node version is recorded in `.nvmrc`;
 if you use nvm, run `nvm install && nvm use`. Otherwise install that Node LTS release
