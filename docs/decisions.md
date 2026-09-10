@@ -42,8 +42,7 @@ Missing optional strings become null, collections become empty arrays, and prima
 default to false. Duplicate recognised Beacon bag keys fail with their original array index.
 
 Names collapse whitespace; full_name excludes title. NI numbers uppercase and lose whitespace.
-Provider IDs remain distinct. Nationality is free text: Acorn's name (or supplied code fallback)
-and Beacon's label are not harmonised or inferred from residence.
+Provider IDs remain distinct.
 
 Acorn address components remain ordered: first non-empty component in line1, the rest in line2.
 Beacon's pre-concatenated line1 is split only at the first comma and only when line2 is empty.
@@ -52,6 +51,11 @@ move-in-only addresses retain their source information.
 
 The bounded country lookup covers GB/GBR, IE/IRL, FR/FRA, DE/DEU, US/USA, CA/CAN, AU/AUS
 and NZ/NZL, plus their English names. Unknown input countries become null, not guessed codes.
+Nationality accepts those codes/names plus `British`, `Irish`, `French`, `German`, `American`,
+`Canadian`, `Australian` and `New Zealander`, then stores the same alpha-2 code. Unsupported
+nationality becomes null. A nationality is never inferred from residence, a name or an NI number.
+When Acorn supplies two recognised nationality values that disagree, the adapter returns one
+safe issue for each original field rather than silently selecting a value.
 
 Recognised phones become compact international strings. An explicit GB assumption converts
 11-digit local numbers starting with 0; + and 00 prefixes and presentation separators are
@@ -60,10 +64,11 @@ number-plan validation. Emails retain case and are checked without DNS/network r
 Unknown contact channels become other; empty values are omitted; all non-empty contacts,
 primary flags and original order are retained for destination-specific selection.
 
-The sample canonical outputs intentionally differ in ID, nationality, Acorn's extra email
-and its move-in date. A dedicated consistency test compares their complete shared field set
-against an independently authored expectation, then asserts those legitimate differences
-separately. Original fixtures remain unchanged and are never loaded by the application.
+The sample canonical outputs intentionally differ only in ID, Acorn's extra email and its
+move-in date. Nationality now normalises to `GB` in both. A dedicated consistency test compares
+their complete shared field set against an independently authored expectation, then asserts
+those legitimate differences separately. Original fixtures remain unchanged and are never loaded
+by the application.
 
 ## Core 3 — Cosper outbound boundary
 

@@ -5,7 +5,7 @@ import {
   type LegalSex,
   type MaritalStatus,
 } from "../../domain/client.js";
-import { countryCode } from "../../shared/countries.js";
+import { countryCode, normaliseNationality } from "../../shared/countries.js";
 import {
   enumKey,
   fullName,
@@ -57,7 +57,7 @@ export function normaliseBeacon(input: unknown): CanonicalClient {
     ni_number: normaliseNi(attributes.t4a_ninumber),
     legal_sex: sexes.get(enumKey(formatted.gendercode)) ?? null,
     marital_status: maritalStatuses.get(enumKey(formatted.familystatuscode)) ?? "unknown",
-    nationality: attributes.t4a_nationality,
+    nationality: normaliseNationality(attributes.t4a_nationality),
     addresses: raw.addresses
       .map((address) => {
         let line1 = address.line1;

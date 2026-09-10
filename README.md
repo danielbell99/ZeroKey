@@ -4,8 +4,9 @@ A local, backend-only integration slice: **Acorn or Beacon → canonical Client 
 It implements the seven core requirements from the take-home exercise. The providers and
 sample clients are fictional. Cosper responses are simulations; no external provider is called.
 
-The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests;
-the [round-trip consistency proof](#round-trip-consistency) explains the selected stretch goal.
+The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests.
+The selected stretch goals are [round-trip consistency](#round-trip-consistency) and
+[nationality normalisation](#nationality-normalisation).
 
 ## Quick start
 
@@ -191,9 +192,9 @@ Unknown marital labels safely become `unknown`, unknown gender labels become nul
 unknown contact channels become `other`. Empty contacts and entirely empty addresses are omitted.
 
 IDs remain source IDs. We do not infer that matching names identify the same global client.
-The two supplied canonical results therefore legitimately differ in ID, nationality, Acorn's
-secondary email and its move-in date. `consistency.test.ts` normalises both original fixtures and
-strictly compares their shared canonical fields against an independently authored expectation.
+The two supplied canonical results therefore legitimately differ in ID, Acorn's secondary email
+and its move-in date. `consistency.test.ts` normalises both original fixtures and strictly
+compares their shared canonical fields against an independently authored expectation.
 
 ## Mapping decisions and limits
 
@@ -215,8 +216,11 @@ strictly compares their shared canonical fields against an independently authore
   codes and English names. Unknown inbound countries become null. Canonical syntax permits
   uppercase two-letter codes; an unsupported selected non-null Cosper country produces a
   `422` issue with code `unsupported_country`, rather than an invented country name.
-- **Nationality:** preserve supplied free text (Acorn name, falling back to supplied code).
-  `British` and `United Kingdom` are not harmonised, and residence does not imply nationality.
+- **Nationality:** canonical nationality is one of the same eight alpha-2 codes or null.
+  Country names/codes and the documented demonyms, including `British`, normalise through a
+  bounded lookup. Unsupported values become null. Acorn rejects two recognised, contradictory
+  nationality fields with field-level `conflicting_nationality` errors. Nationality is never
+  inferred from residence.
 - **Phones:** recognised phones use compact international form. Explicit `+`/`00` prefixes
   and presentation separators are supported. These fictional adapters assume GB for an
   11-digit local number beginning with 0; non-UK callers must supply an international prefix.
@@ -317,7 +321,7 @@ work. Numbers below follow the exercise brief's order, rather than implementatio
 | --- | --- | --- |
 | 1. Resilience | Existing core coverage includes safe 4xx/500 responses and body limits; further resilience work is deferred. | [HTTP errors](src/http/app.ts), [failure tests](tests/api/app.test.ts), [body-limit smoke test](tests/smoke/server.test.ts) |
 | 2. Round-trip consistency | **Approved and implemented:** directly compare both samples' shared canonical data and preserve legitimate differences. | [Dedicated consistency suite](tests/unit/consistency.test.ts), [explanation below](#round-trip-consistency) |
-| 3. Nationality / country normalisation | Country conversion already has a bounded lookup; nationality harmonisation is deferred. | [Country lookup](src/shared/countries.ts), [documented mapping limits](#mapping-decisions-and-limits) |
+| 3. Nationality / country normalisation | **Approved and implemented:** country names/codes and documented nationality labels produce a bounded alpha-2 nationality code. | [Catalogue and canonical schema](src/domain/countries.ts), [normalisation helper](src/shared/countries.ts), [mapping tests](tests/unit/countries.test.ts) |
 | 4. Second resource end-to-end | Deferred; the only resource is Client. | [Current resource contract](src/domain/client.ts) |
 | 5. Capability / versioning awareness | Registry-derived capabilities are implemented as part of core 5; explicit canonical versioning is deferred. | [Capability derivation](src/registry/registry.ts), [registration-only extension test](tests/api/extensibility.test.ts) |
 | 6. Tooling & ergonomics | **Approved QA tooling is implemented:** automatic local hooks and a shared QA command. Safe structured logging also exists; OpenAPI/Swagger is deferred. | [Hook installer](scripts/install-hooks.mjs), [pre-commit](.githooks/pre-commit), [pre-push](.githooks/pre-push), [QA scripts](package.json), [CI](.github/workflows/qa.yml), [logging](src/http/app.ts) |
@@ -338,12 +342,12 @@ The [two tests](tests/unit/consistency.test.ts) verify:
 
 1. Both full outputs satisfy the canonical runtime schema. Their shared fields strictly equal
    each other and a hand-authored expected result: names, DOB, NI number, legal sex, marital
-   status, the complete shared address and both primary contacts. Exact arrays and explicit
-   nulls prevent missing data or a common wrong result from passing.
-2. Legitimate differences remain intact: source IDs, `United Kingdom` versus `British`, Acorn's
-   `2016-03-01` move-in date versus Beacon's null, and Acorn's non-primary email versus none.
+   status, nationality, the complete shared address and both primary contacts. Exact arrays and
+   explicit nulls prevent missing data or a common wrong result from passing.
+2. Legitimate differences remain intact: source IDs, Acorn's `2016-03-01` move-in date versus
+   Beacon's null, and Acorn's non-primary email versus none.
 
-The comparison helper only selects fields: it excludes ID and nationality, removes address
+The comparison helper only selects fields: it excludes the source ID, removes address
 `move_in_date` and retains all primary contacts in their original order. Original fixture inputs
 and canonical outputs are deeply frozen before comparison. It does not repair or normalise
 values to make the comparison pass. These are fictional sample-equivalence tests, not an
@@ -352,15 +356,34 @@ identity-matching system or a claim that Cosper preserves every canonical field.
 The suite runs automatically in `npm test`, the full QA gate and the existing Git hooks. See
 [verification evidence](docs/verification.md#cross-provider-consistency) for measured results.
 
+## Nationality normalisation
+
+Nationality is a bounded canonical country code: `GB`, `IE`, `FR`, `DE`, `US`, `CA`, `AU`, `NZ`
+or `null`. The shared catalogue recognises each supported country code, alpha-3 code and English
+country name, plus its documented demonym. For example, `British`, `United Kingdom`, `GB` and
+`GBR` all normalise to `GB`.
+
+Unknown or compound values become null; raw values are not copied into the canonical result.
+Nationality is never inferred from an address. If Acorn supplies two recognised nationality
+values that resolve differently, normalisation returns a structured 422 response with a
+`conflicting_nationality` issue on each original field.
+
+Run the focused lookup and adapter tests:
+
+```sh
+npm test -- tests/unit/countries.test.ts tests/unit/inbound.test.ts
+```
+
+See [verification evidence](docs/verification.md#nationality-normalisation) for measured results.
+
 ## Scope, next steps and AI use
 
 There is no frontend, database, authentication, deployment, real outbound HTTP or second
 resource. OpenAPI/Swagger and explicit canonical versioning are deferred. The capability
 list and safe errors naturally overlap optional ideas but are also simple core design choices.
 
-With more time, prioritise nationality/country harmonisation, then a warning model for lossy/
-partial transformations. A real vendor integration would first require its actual nullability,
-country and telephone contracts;
+With more time, prioritise a warning model for lossy/partial transformations. A real vendor
+integration would first require its actual nullability, country and telephone contracts;
 do not extrapolate the fictional Cosper assumptions into production.
 
 AI assistance was used for planning, implementation and test scaffolding. Current official

@@ -8,6 +8,7 @@ import {
   LegalSexSchema,
   MaritalStatusSchema,
 } from "../../src/domain/client.js";
+import { CanonicalCountryCodeSchema } from "../../src/domain/countries.js";
 import { minimalClient } from "../helpers/client.js";
 
 describe("canonical contract", () => {
@@ -19,6 +20,9 @@ describe("canonical contract", () => {
     expectTypeOf<CanonicalClient["marital_status"]>()
       .exclude<undefined | null>()
       .toEqualTypeOf<CanonicalClient["marital_status"]>();
+    expectTypeOf<CanonicalClient["nationality"]>().toEqualTypeOf<
+      "GB" | "IE" | "FR" | "DE" | "US" | "CA" | "AU" | "NZ" | null
+    >();
   });
 
   it("defaults omitted marital status but does not accept null", () => {
@@ -27,11 +31,14 @@ describe("canonical contract", () => {
     expect(CanonicalClientSchema.safeParse({ ...input, marital_status: null }).success).toBe(false);
   });
 
-  it.each(["id", "first_name", "addresses", "contact_details"])("requires %s", (field) => {
-    const input: Record<string, unknown> = { ...minimalClient() };
-    delete input[field];
-    expect(CanonicalClientSchema.safeParse(input).success).toBe(false);
-  });
+  it.each(["id", "first_name", "nationality", "addresses", "contact_details"])(
+    "requires %s",
+    (field) => {
+      const input: Record<string, unknown> = { ...minimalClient() };
+      delete input[field];
+      expect(CanonicalClientSchema.safeParse(input).success).toBe(false);
+    },
+  );
 
   it.each([
     { id: " " },
@@ -41,6 +48,10 @@ describe("canonical contract", () => {
     { marital_status: "Betrothed" },
     { ni_number: "qq123456c" },
     { ni_number: "QQ 123456C" },
+    { nationality: "British" },
+    { nationality: "gb" },
+    { nationality: "GBR" },
+    { nationality: "ES" },
     { addresses: null },
     { contact_details: "" },
     { unexpected: "ignored?" },
@@ -57,6 +68,12 @@ describe("canonical contract", () => {
           ).success,
         ).toBe(true);
       }
+    }
+  });
+
+  it("accepts every canonical nationality", () => {
+    for (const nationality of CanonicalCountryCodeSchema.options) {
+      expect(CanonicalClientSchema.safeParse(minimalClient({ nationality })).success).toBe(true);
     }
   });
 });

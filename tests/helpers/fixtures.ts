@@ -28,7 +28,7 @@ export function expectedAcorn(): CanonicalClient {
     ni_number: "QQ123456C",
     legal_sex: "female",
     marital_status: "cohabiting",
-    nationality: "United Kingdom",
+    nationality: "GB",
     addresses: [
       {
         primary: true,
@@ -61,7 +61,7 @@ export function expectedBeacon(): CanonicalClient {
     ni_number: "QQ123456C",
     legal_sex: "female",
     marital_status: "cohabiting",
-    nationality: "British",
+    nationality: "GB",
     addresses: [
       {
         primary: true,
