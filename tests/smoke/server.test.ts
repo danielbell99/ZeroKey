@@ -18,6 +18,20 @@ async function unusedPort(): Promise<number> {
 }
 
 describe("real Node HTTP server", () => {
+  it("applies the body limit to UTF-8 bytes over real HTTP", async () => {
+    const server = await startServer(0);
+    try {
+      const response = await fetch(`http://127.0.0.1:${server.port}/v1/acorn/clients/normalise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: 1, extra: "é".repeat(600000) }),
+      });
+      expect(response.status).toBe(413);
+      expect(await response.json()).toMatchObject({ error: { code: "payload_too_large" } });
+    } finally {
+      await server.close();
+    }
+  });
   it("serves on an ephemeral loopback port and closes idempotently", async () => {
     const server = await startServer(0);
     try {

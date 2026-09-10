@@ -148,6 +148,29 @@ describe("HTTP client errors", () => {
 });
 
 describe("unexpected failures stay distinct from caller errors", () => {
+  it("uses the default safe log sink and handles failures outside a provider operation", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const registry = {
+        get: () => undefined,
+        list: () => {
+          throw new Error("SECRET_REGISTRY_FAILURE");
+        },
+      };
+      const response = await createApp({ registry }).request("/v1/providers");
+      expect(response.status).toBe(500);
+      expect(spy).toHaveBeenCalledWith(
+        JSON.stringify({
+          event: "unexpected_error",
+          requestId: response.headers.get("x-request-id"),
+          provider: null,
+          operation: null,
+        }),
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
   it("logs a safe correlated event without exception text or input", async () => {
     const logFailure = vi.fn();
     const registry = createRegistry([

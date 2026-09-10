@@ -117,3 +117,21 @@ fails early for duplicate/invalid slugs or providers with no operations. Tests r
 fourth, test-only adapter supporting both directions and exercise it through unchanged routes.
 The same validation and unsupported-operation errors apply. Adding it does not mutate the
 production registry, and concrete adapter request types remain exact at compile time.
+
+## Core 6 — verification gates
+
+Unit and in-process API suites are independently selectable from compiled-server smoke tests.
+The quality gate runs strict source/test type checking, Biome, tests, V8 coverage, a production
+build, real-server smoke tests and a high/critical dependency audit. Both Git hooks and CI use
+that gate. Coverage includes all source files, including files not imported by unit/API tests.
+
+The domain/provider/shared transformation group must meet 90% lines/statements/functions and
+85% branches. Global coverage is reported honestly: the server entry point is tested in a
+separate child process and is not counted as covered by the unit/API instrumentation. There
+are no coverage ignore comments or source-file exclusions. Coverage supplements behavioural
+assertions, including the unchanged PDF fixtures, every enum, source paths, unknown inputs,
+selection precedence, generated-output defects, registration and privacy checks.
+
+CI uses the verified stable official checkout/setup-node releases pinned to immutable commits,
+with a Node 24 action runtime, read-only repository permissions, no persisted checkout token
+and a bounded job timeout. No application credentials are required.

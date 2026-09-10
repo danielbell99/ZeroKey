@@ -26,7 +26,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --project unit --project api --coverage",
     "hooks:install": "node scripts/install-hooks.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run test:smoke && npm audit --audit-level=high"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run coverage && npm run test:smoke && npm audit --audit-level=high"
   },
   "dependencies": {
     "@hono/node-server": "2.1.1",
