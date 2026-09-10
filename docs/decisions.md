@@ -104,3 +104,16 @@ Internal server tests use ephemeral port zero. SIGINT/SIGTERM close the listener
 connections, with a five-second bound for active connections. Occupied ports fail clearly;
 no unrelated process is stopped. Smoke tests exercise both the real HTTP adapter and the
 compiled command-line entry point, including startup failures and both shutdown signals.
+
+## Core 5 — additive extension proof
+
+A provider exports typed functions plus a slug. Its raw schema and mapping stay together;
+the only production registration edit is in the composition module. Supported operations
+are derived from actual methods, not a separately maintained capabilities list. No canonical
+versioning system or second resource is added.
+
+The registry snapshots and freezes registrations, returns fresh capability listings, and
+fails early for duplicate/invalid slugs or providers with no operations. Tests register a
+fourth, test-only adapter supporting both directions and exercise it through unchanged routes.
+The same validation and unsupported-operation errors apply. Adding it does not mutate the
+production registry, and concrete adapter request types remain exact at compile time.
