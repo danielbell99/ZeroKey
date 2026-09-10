@@ -5,8 +5,9 @@ It implements the seven core requirements from the take-home exercise. The provi
 sample clients are fictional. Cosper responses are simulations; no external provider is called.
 
 The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests.
-The selected stretch goals are [round-trip consistency](#round-trip-consistency) and
-[nationality normalisation](#nationality-normalisation).
+Completed stretch goals are [round-trip consistency](#round-trip-consistency),
+[nationality normalisation](#nationality-normalisation) and
+[OpenAPI/Swagger tooling](#openapi-and-swagger).
 
 ## Quick start
 
@@ -313,18 +314,31 @@ work. Numbers below follow the exercise brief's order, rather than implementatio
 | 4. Hono API and structured errors | [HTTP application](src/http/app.ts), [validation errors](src/shared/validation.ts) | [API contracts and errors](tests/api/app.test.ts), [real-server smoke tests](tests/smoke/server.test.ts) |
 | 5. Extensible architecture | [Registry](src/registry/registry.ts), [provider registration](src/registry/providers.ts) | [Registry tests](tests/unit/registry.test.ts), [fourth-provider proof](tests/api/extensibility.test.ts) |
 | 6. Meaningful tests | [Test suites](tests), [coverage gates](vitest.config.ts), [QA scripts](package.json) | `npm run check`; [recorded evidence](docs/verification.md) |
-| 7. README and runnable examples | [Quick start](#quick-start), [API examples](#exercise-the-api), [model boundaries](#model-and-architectural-boundaries), [mapping decisions](#mapping-decisions-and-limits), [add a provider](#add-a-provider), [next steps](#scope-next-steps-and-ai-use) | [Installation and API exercise evidence](docs/verification.md) |
+| 7. README and runnable examples | [Quick start](#quick-start), [API examples](#exercise-the-api), [model boundaries](#model-and-architectural-boundaries), [mapping decisions](#mapping-decisions-and-limits), [add a provider](#add-a-provider), [OpenAPI/Swagger](#openapi-and-swagger) | [Installation and API exercise evidence](docs/verification.md) |
 
-### Stretch goals — selected work and existing overlap
+### Stretch goals — completion status
 
 | Stretch goal | Status and coverage | Code / evidence |
 | --- | --- | --- |
-| 1. Resilience | Existing core coverage includes safe 4xx/500 responses and body limits; further resilience work is deferred. | [HTTP errors](src/http/app.ts), [failure tests](tests/api/app.test.ts), [body-limit smoke test](tests/smoke/server.test.ts) |
+| 1. Resilience | **Partially covered by core work; not claimed as a completed stretch goal.** Safe 4xx/500 responses and body limits exist, but no additional resilience feature was added. | [HTTP errors](src/http/app.ts), [failure tests](tests/api/app.test.ts), [body-limit smoke test](tests/smoke/server.test.ts) |
 | 2. Round-trip consistency | **Approved and implemented:** directly compare both samples' shared canonical data and preserve legitimate differences. | [Dedicated consistency suite](tests/unit/consistency.test.ts), [explanation below](#round-trip-consistency) |
 | 3. Nationality / country normalisation | **Approved and implemented:** country names/codes and documented nationality labels produce a bounded alpha-2 nationality code. | [Catalogue and canonical schema](src/domain/countries.ts), [normalisation helper](src/shared/countries.ts), [mapping tests](tests/unit/countries.test.ts) |
-| 4. Second resource end-to-end | Deferred; the only resource is Client. | [Current resource contract](src/domain/client.ts) |
-| 5. Capability / versioning awareness | Registry-derived capabilities are implemented as part of core 5; explicit canonical versioning is deferred. | [Capability derivation](src/registry/registry.ts), [registration-only extension test](tests/api/extensibility.test.ts) |
-| 6. Tooling & ergonomics | **Approved QA tooling is implemented:** automatic local hooks and a shared QA command. Safe structured logging also exists; OpenAPI/Swagger is deferred. | [Hook installer](scripts/install-hooks.mjs), [pre-commit](.githooks/pre-commit), [pre-push](.githooks/pre-push), [QA scripts](package.json), [CI](.github/workflows/qa.yml), [logging](src/http/app.ts) |
+| 4. Second resource end-to-end | **Not started.** Client is the only resource. | [Current resource contract](src/domain/client.ts) |
+| 5. Capability / versioning awareness | **Partially covered by core work; not claimed as a completed stretch goal.** Registry-derived capabilities exist, but explicit canonical versioning is not implemented. | [Capability derivation](src/registry/registry.ts), [registration-only extension test](tests/api/extensibility.test.ts) |
+| 6. Tooling & ergonomics | **Approved and implemented:** repository hooks, shared QA commands, CI, safe structured logging and source-derived OpenAPI/Swagger documentation. | [OpenAPI contract](src/http/openapi.ts), [hook installer](scripts/install-hooks.mjs), [QA scripts](package.json), [CI](.github/workflows/qa.yml) |
+
+## OpenAPI and Swagger
+
+Start the service with `npm run dev`, then open the generated contract at
+**http://127.0.0.1:3000/openapi.json** or use the interactive Swagger reference at
+**http://127.0.0.1:3000/docs**. The document is generated from the route contracts and
+the same runtime Zod schemas that validate canonical and provider data. Swagger's “Try it out”
+uses the current local server and the specification URL is relative, so it never targets an
+external provider.
+
+The provider path remains registry-driven rather than a fixed OpenAPI enum. The documentation
+includes examples for the current Acorn, Beacon and Cosper adapters; call `GET /v1/providers`
+for the authoritative runtime capability list.
 
 ## Round-trip consistency
 
@@ -375,19 +389,3 @@ npm test -- tests/unit/countries.test.ts tests/unit/inbound.test.ts
 ```
 
 See [verification evidence](docs/verification.md#nationality-normalisation) for measured results.
-
-## Scope, next steps and AI use
-
-There is no frontend, database, authentication, deployment, real outbound HTTP or second
-resource. OpenAPI/Swagger and explicit canonical versioning are deferred. The capability
-list and safe errors naturally overlap optional ideas but are also simple core design choices.
-
-With more time, prioritise a warning model for lossy/partial transformations. A real vendor
-integration would first require its actual nullability, country and telephone contracts;
-do not extrapolate the fictional Cosper assumptions into production.
-
-AI assistance was used for planning, implementation and test scaffolding. Current official
-Hono, Zod, TypeScript, Vitest and npm documentation was consulted through Context7, then
-checked against installed package behaviour. The important review questions remain human:
-why these domain boundaries, how unknown data behaves, what information is lost, how another
-provider is added, and which tests establish confidence. Those decisions are explicit above.

@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { type Context, Hono, type MiddlewareHandler } from "hono";
+import { swaggerUI } from "@hono/swagger-ui";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { CanonicalClientSchema } from "../domain/client.js";
 import { defaultRegistry } from "../registry/providers.js";
@@ -10,6 +12,12 @@ import {
   type ProviderRegistry,
 } from "../registry/registry.js";
 import { PayloadValidationError, parseInput, type ValidationIssue } from "../shared/validation.js";
+import {
+  buildRequestRoute,
+  normaliseRoute,
+  OpenApiDocumentConfig,
+  providersRoute,
+} from "./openapi.js";
 
 type AppEnv = {
   Variables: {
@@ -47,7 +55,7 @@ export function createApp(options: AppOptions = {}) {
   const registry = options.registry ?? defaultRegistry();
   const logFailure =
     options.logFailure ?? ((event: FailureEvent) => console.error(JSON.stringify(event)));
-  const app = new Hono<AppEnv>();
+  const app = new OpenAPIHono<AppEnv>();
 
   app.use("*", async (c, next) => {
     const requestId = randomUUID();
@@ -74,6 +82,10 @@ export function createApp(options: AppOptions = {}) {
     return errorResponse(c, 500, "internal_error", "An unexpected error occurred");
   });
   app.notFound((c) => errorResponse(c, 404, "not_found", "Route not found"));
+  // The routes retain their custom parser/error pipeline; these contracts generate the same API spec.
+  app.openAPIRegistry.registerPath(providersRoute);
+  app.openAPIRegistry.registerPath(normaliseRoute);
+  app.openAPIRegistry.registerPath(buildRequestRoute);
   app.get("/v1/providers", (c) => c.json(registry.list()));
 
   const resolve: (operation: Operation) => MiddlewareHandler<AppEnv> =
@@ -143,6 +155,15 @@ export function createApp(options: AppOptions = {}) {
       if (!build) throw new Error("Registry operation invariant failed");
       return c.json(BuildResultSchema.parse(build(client)));
     },
+  );
+  app.doc("/openapi.json", OpenApiDocumentConfig);
+  app.get(
+    "/docs",
+    swaggerUI({
+      title: "ZeroKey API reference",
+      url: "/openapi.json",
+      persistAuthorization: false,
+    }),
   );
   return app;
 }

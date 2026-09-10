@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@hono/zod-openapi";
 import { CanonicalCountryCodeSchema } from "./countries.js";
 
 /** Date-only values never pass through a timezone-dependent Date constructor. */
@@ -26,20 +26,22 @@ export const MaritalStatusSchema = z.enum([
   "unknown",
 ]);
 
-export const CanonicalAddressSchema = z.strictObject({
-  primary: z.boolean(),
-  line1: NullableTextSchema,
-  line2: NullableTextSchema,
-  town_city: NullableTextSchema,
-  county: NullableTextSchema,
-  postcode: NullableTextSchema,
-  // Syntax only: supported country conversions are explicitly bounded by the adapters.
-  country: z
-    .string()
-    .regex(/^[A-Z]{2}$/u)
-    .nullable(),
-  move_in_date: IsoDateSchema.nullable(),
-});
+export const CanonicalAddressSchema = z
+  .strictObject({
+    primary: z.boolean(),
+    line1: NullableTextSchema,
+    line2: NullableTextSchema,
+    town_city: NullableTextSchema,
+    county: NullableTextSchema,
+    postcode: NullableTextSchema,
+    // Syntax only: supported country conversions are explicitly bounded by the adapters.
+    country: z
+      .string()
+      .regex(/^[A-Z]{2}$/u)
+      .nullable(),
+    move_in_date: IsoDateSchema.nullable(),
+  })
+  .openapi("CanonicalAddress");
 
 export const CanonicalContactDetailSchema = z
   .strictObject({
@@ -61,24 +63,27 @@ export const CanonicalContactDetailSchema = z
         message: "Expected a valid contact format",
       });
     }
-  });
+  })
+  .openapi("CanonicalContactDetail");
 
-export const CanonicalClientSchema = z.strictObject({
-  id: TextSchema,
-  title: NullableTextSchema,
-  first_name: NullableTextSchema,
-  middle_names: NullableTextSchema,
-  last_name: NullableTextSchema,
-  full_name: NullableTextSchema,
-  date_of_birth: IsoDateSchema.nullable(),
-  // Formatting is not verification of issuance; the brief deliberately uses QQ.
-  ni_number: NiNumberSchema.nullable(),
-  legal_sex: LegalSexSchema.nullable(),
-  marital_status: MaritalStatusSchema.default("unknown"),
-  nationality: CanonicalCountryCodeSchema.nullable(),
-  addresses: z.array(CanonicalAddressSchema),
-  contact_details: z.array(CanonicalContactDetailSchema),
-});
+export const CanonicalClientSchema = z
+  .strictObject({
+    id: TextSchema,
+    title: NullableTextSchema,
+    first_name: NullableTextSchema,
+    middle_names: NullableTextSchema,
+    last_name: NullableTextSchema,
+    full_name: NullableTextSchema,
+    date_of_birth: IsoDateSchema.nullable(),
+    // Formatting is not verification of issuance; the brief deliberately uses QQ.
+    ni_number: NiNumberSchema.nullable(),
+    legal_sex: LegalSexSchema.nullable(),
+    marital_status: MaritalStatusSchema.default("unknown"),
+    nationality: CanonicalCountryCodeSchema.nullable(),
+    addresses: z.array(CanonicalAddressSchema),
+    contact_details: z.array(CanonicalContactDetailSchema),
+  })
+  .openapi("CanonicalClient");
 
 export type CanonicalClient = z.infer<typeof CanonicalClientSchema>;
 export type CanonicalAddress = z.infer<typeof CanonicalAddressSchema>;

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@hono/zod-openapi";
 
 /**
  * Deliberately bounded exercise vocabulary. A code represents nationality in the

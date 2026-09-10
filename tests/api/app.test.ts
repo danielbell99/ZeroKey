@@ -49,6 +49,78 @@ describe("HTTP success contracts", () => {
   });
 });
 
+describe("API documentation contracts", () => {
+  it("generates a safe OpenAPI contract for every public integration route", async () => {
+    const response = await createApp().request("/openapi.json");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("x-request-id")).toMatch(/^[a-f\d-]{36}$/u);
+
+    const document = (await response.json()) as {
+      components: { schemas: Record<string, unknown> };
+      info: { title: string; version: string };
+      openapi: string;
+      paths: Record<string, unknown>;
+    };
+    expect(document).toMatchObject({
+      openapi: "3.0.0",
+      info: { title: "ZeroKey client integrations", version: "0.1.0" },
+      paths: {
+        "/v1/providers": {
+          get: { responses: { 200: expect.any(Object), 500: expect.any(Object) } },
+        },
+        "/v1/{provider}/clients/normalise": {
+          post: {
+            responses: {
+              200: expect.any(Object),
+              400: expect.any(Object),
+              404: expect.any(Object),
+              413: expect.any(Object),
+              415: expect.any(Object),
+              422: expect.any(Object),
+              500: expect.any(Object),
+            },
+          },
+        },
+        "/v1/{provider}/clients/build-request": {
+          post: {
+            responses: {
+              200: expect.any(Object),
+              400: expect.any(Object),
+              404: expect.any(Object),
+              413: expect.any(Object),
+              415: expect.any(Object),
+              422: expect.any(Object),
+              500: expect.any(Object),
+            },
+          },
+        },
+      },
+    });
+    expect(document.components.schemas).toMatchObject({
+      AcornClient: expect.any(Object),
+      BeaconClient: expect.any(Object),
+      CanonicalClient: expect.any(Object),
+      CosperBuildResult: expect.any(Object),
+      ErrorEnvelope: expect.any(Object),
+      ProviderCapability: expect.any(Object),
+    });
+    const serialised = JSON.stringify(document);
+    expect(serialised).not.toContain("QQ123456C");
+    expect(serialised).not.toContain("priya.cb@example.co.uk");
+  });
+
+  it("serves Swagger UI against the same-origin OpenAPI document", async () => {
+    const response = await createApp().request("/docs");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(response.headers.get("x-request-id")).toMatch(/^[a-f\d-]{36}$/u);
+    const body = await response.text();
+    expect(body).toContain("ZeroKey API reference");
+    expect(body).toContain("url: '/openapi.json'");
+  });
+});
+
 describe("HTTP client errors", () => {
   it.each([
     ["/v1/missing/clients/normalise", 404, "unknown_provider"],

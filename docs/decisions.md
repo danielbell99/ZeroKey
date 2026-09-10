@@ -144,3 +144,23 @@ selection precedence, generated-output defects, registration and privacy checks.
 CI uses the verified stable official checkout/setup-node releases pinned to immutable commits,
 with a Node 24 action runtime, read-only repository permissions, no persisted checkout token
 and a bounded job timeout. No application credentials are required.
+
+## Stretch goal 6 — API documentation tooling
+
+OpenAPI uses `@hono/zod-openapi` with the current Hono/Zod-compatible package versions. The
+application remains responsible for its existing manual parsing and safe multi-status error
+pipeline; the same `createRoute` contracts are registered with OpenAPI's registry instead of
+replacing that behaviour with generated validation middleware. Public canonical, provider and
+Cosper schemas are named OpenAPI components from their existing runtime Zod definitions, so a
+documentation-only copy cannot drift from the payload contract.
+
+`GET /openapi.json` produces the OpenAPI 3.0 document and `GET /docs` serves Swagger UI against
+that relative document URL. The document deliberately describes a slug-shaped provider path,
+not a fixed enum: the runtime registry remains the capability authority. Current Acorn, Beacon
+and Cosper examples make the reference immediately usable without claiming that future providers
+are statically known.
+
+Swagger UI is an operator/developer reference only. Its try-it-out requests stay on the current
+loopback server, no credentials are configured or persisted, and no real provider is contacted.
+API and compiled-server tests assert the document routes, path/status coverage, named components,
+request ID headers and non-disclosure of fixture values.

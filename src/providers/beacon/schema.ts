@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@hono/zod-openapi";
 import { OptionalBritishDateSchema } from "../../shared/normalisation.js";
 import {
   OptionalBooleanSchema,
@@ -11,40 +11,42 @@ import {
 const BagEntrySchema = z.object({ key: z.string().min(1), value: z.unknown().optional() });
 type BagEntry = z.infer<typeof BagEntrySchema>;
 
-export const BeaconClientSchema = z.object({
-  recordId: z.string().trim().min(1),
-  attributes: optionalArray(BagEntrySchema),
-  formattedValues: optionalArray(BagEntrySchema),
-  addresses: optionalArray(
-    z.object({
-      line1: OptionalTextSchema,
-      line2: OptionalTextSchema,
-      city: OptionalTextSchema,
-      county: OptionalTextSchema,
-      postcode: OptionalTextSchema,
-      country: OptionalTextSchema,
-      primary: z
-        .union([
-          z.boolean(),
-          z
-            .string()
-            .trim()
-            .toLowerCase()
-            .pipe(z.enum(["true", "false"]))
-            .transform((value) => value === "true"),
-        ])
-        .nullish()
-        .transform((value) => value ?? false),
-    }),
-  ),
-  contacts: optionalArray(
-    z.object({
-      type: z.number().int().nullish(),
-      value: OptionalTextSchema,
-      isPrimary: OptionalBooleanSchema,
-    }),
-  ),
-});
+export const BeaconClientSchema = z
+  .object({
+    recordId: z.string().trim().min(1),
+    attributes: optionalArray(BagEntrySchema),
+    formattedValues: optionalArray(BagEntrySchema),
+    addresses: optionalArray(
+      z.object({
+        line1: OptionalTextSchema,
+        line2: OptionalTextSchema,
+        city: OptionalTextSchema,
+        county: OptionalTextSchema,
+        postcode: OptionalTextSchema,
+        country: OptionalTextSchema,
+        primary: z
+          .union([
+            z.boolean(),
+            z
+              .string()
+              .trim()
+              .toLowerCase()
+              .pipe(z.enum(["true", "false"]))
+              .transform((value) => value === "true"),
+          ])
+          .nullish()
+          .transform((value) => value ?? false),
+      }),
+    ),
+    contacts: optionalArray(
+      z.object({
+        type: z.number().int().nullish(),
+        value: OptionalTextSchema,
+        isPrimary: OptionalBooleanSchema,
+      }),
+    ),
+  })
+  .openapi("BeaconClient");
 
 export const AttributesSchema = z.object({
   firstname: OptionalTextSchema,
