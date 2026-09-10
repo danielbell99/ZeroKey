@@ -63,3 +63,25 @@ primary flags and original order are retained for destination-specific selection
 The sample canonical outputs intentionally differ in ID, nationality, Acorn's extra email
 and its move-in date. Their independently asserted shared fields agree. Original fixtures
 remain unchanged and are never loaded by the application.
+
+## Core 3 — Cosper outbound boundary
+
+The canonical input is converted into a strict, runtime-validated Cosper request. Sex maps
+male/female to 0/1; other, unspecified and absent map to 2. Engagement maps to marital code 0
+(unknown), rather than inventing single or married status. All other codes follow the brief.
+Optional destination strings remain explicit nulls; this is an assumption for the fictional
+contract, not a claim about a real vendor API. Dates become DD/MM/YYYY without timezone logic.
+
+The first usable primary address wins, otherwise the first usable address. Usable means at
+least one field Cosper can represent; a county-only/move-in-only address cannot win selection.
+An unsupported non-null selected country fails with a 422-compatible issue rather than losing
+known information or inventing its full name.
+
+The first primary email wins, otherwise the first email. Phone primary status outranks type;
+within the primary group mobile wins over telephone, then original order breaks ties. Without
+primaries, prefer mobile then telephone. Never reinterpret other contacts as phones. UK mobile
+presentation matches the supplied +44 7700 900123 target; other international numbers stay compact.
+
+Cosper cannot retain title, middle names, nationality, county, multiple addresses or secondary
+contacts, and collapses some enums. These losses are intentional and local to this adapter.
+The returned created response is deterministic and labelled simulated; no network call occurs.
