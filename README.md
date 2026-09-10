@@ -4,6 +4,9 @@ A local, backend-only integration slice: **Acorn or Beacon → canonical Client 
 It implements the seven core requirements from the take-home exercise. The providers and
 sample clients are fictional. Cosper responses are simulations; no external provider is called.
 
+The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests;
+the [round-trip consistency proof](#round-trip-consistency) explains the selected stretch goal.
+
 ## Quick start
 
 Prerequisite: Node 24.21.0 and npm 12.0.2. If you use nvm, run `nvm install && nvm use` first.
@@ -290,15 +293,64 @@ their use of library types. A separate production compiler also checks dependenc
 See the concrete compatibility notes in the decision history. No `any` escapes or source
 type-error suppressions are used to make application checks pass.
 
-| Core requirement | Main verification |
-| --- | --- |
-| 1. Canonical schema/types | `client.test.ts`, strict compiler checks |
-| 2. Acorn/Beacon input | `inbound.test.ts`, `validation.test.ts` |
-| 3. Cosper output | `cosper.test.ts`, exact target fixture |
-| 4. Hono API/errors | API suite and compiled-server smoke suite |
-| 5. Extensible architecture | `registry.test.ts`, `extensibility.test.ts` |
-| 6. Meaningful tests | Full check, coverage thresholds, CI |
-| 7. Documentation | Fresh-checkout run and the curl workflow above |
+## Requirement coverage
+
+Approved implementation scope: all seven core requirements, the **round-trip consistency**
+stretch goal, and local QA tooling. The tables distinguish completed work from deferred optional
+work. Numbers below follow the exercise brief's order, rather than implementation priority.
+
+### Core requirements — approved and implemented
+
+| Core requirement | Implementation / deliverable | Verification |
+| --- | --- | --- |
+| 1. Canonical model, types and runtime validation | [Canonical Zod schemas and inferred types](src/domain/client.ts) | [Schema and type tests](tests/unit/client.test.ts), `npm run typecheck` |
+| 2. Two inbound adapters | [Acorn](src/providers/acorn/normalise.ts), [Beacon](src/providers/beacon/normalise.ts), [normalisation helpers](src/shared/normalisation.ts) | [Fixtures, enums, dates and missing data](tests/unit/inbound.test.ts), [validation paths](tests/unit/validation.test.ts) |
+| 3. Cosper outbound adapter | [Request builder](src/providers/cosper/build-request.ts), [destination schema](src/providers/cosper/schema.ts) | [Exact target, encodings and contact selection](tests/unit/cosper.test.ts) |
+| 4. Hono API and structured errors | [HTTP application](src/http/app.ts), [validation errors](src/shared/validation.ts) | [API contracts and errors](tests/api/app.test.ts), [real-server smoke tests](tests/smoke/server.test.ts) |
+| 5. Extensible architecture | [Registry](src/registry/registry.ts), [provider registration](src/registry/providers.ts) | [Registry tests](tests/unit/registry.test.ts), [fourth-provider proof](tests/api/extensibility.test.ts) |
+| 6. Meaningful tests | [Test suites](tests), [coverage gates](vitest.config.ts), [QA scripts](package.json) | `npm run check`; [recorded evidence](docs/verification.md) |
+| 7. README and runnable examples | [Quick start](#quick-start), [API examples](#exercise-the-api), [model boundaries](#model-and-architectural-boundaries), [mapping decisions](#mapping-decisions-and-limits), [add a provider](#add-a-provider), [next steps](#scope-next-steps-and-ai-use) | [Installation and API exercise evidence](docs/verification.md) |
+
+### Stretch goals — selected work and existing overlap
+
+| Stretch goal | Status and coverage | Code / evidence |
+| --- | --- | --- |
+| 1. Resilience | Existing core coverage includes safe 4xx/500 responses and body limits; further resilience work is deferred. | [HTTP errors](src/http/app.ts), [failure tests](tests/api/app.test.ts), [body-limit smoke test](tests/smoke/server.test.ts) |
+| 2. Round-trip consistency | **Approved and implemented:** directly compare both samples' shared canonical data and preserve legitimate differences. | [Dedicated consistency suite](tests/unit/consistency.test.ts), [explanation below](#round-trip-consistency) |
+| 3. Nationality / country normalisation | Country conversion already has a bounded lookup; nationality harmonisation is deferred. | [Country lookup](src/shared/countries.ts), [documented mapping limits](#mapping-decisions-and-limits) |
+| 4. Second resource end-to-end | Deferred; the only resource is Client. | [Current resource contract](src/domain/client.ts) |
+| 5. Capability / versioning awareness | Registry-derived capabilities are implemented as part of core 5; explicit canonical versioning is deferred. | [Capability derivation](src/registry/registry.ts), [registration-only extension test](tests/api/extensibility.test.ts) |
+| 6. Tooling & ergonomics | **Approved QA tooling is implemented:** automatic local hooks and a shared QA command. Safe structured logging also exists; OpenAPI/Swagger is deferred. | [Hook installer](scripts/install-hooks.mjs), [pre-commit](.githooks/pre-commit), [pre-push](.githooks/pre-push), [QA scripts](package.json), [CI](.github/workflows/qa.yml), [logging](src/http/app.ts) |
+
+## Round-trip consistency
+
+The brief defines this stretch goal as proving that the supplied Acorn and Beacon payloads
+normalise to equivalent canonical clients on their shared fields. Both production adapters were
+already implemented for core 2; this stretch adds a direct, independent proof of their agreement.
+
+Run the focused proof from the repository root:
+
+```sh
+npm test -- tests/unit/consistency.test.ts
+```
+
+The [two tests](tests/unit/consistency.test.ts) verify:
+
+1. Both full outputs satisfy the canonical runtime schema. Their shared fields strictly equal
+   each other and a hand-authored expected result: names, DOB, NI number, legal sex, marital
+   status, the complete shared address and both primary contacts. Exact arrays and explicit
+   nulls prevent missing data or a common wrong result from passing.
+2. Legitimate differences remain intact: source IDs, `United Kingdom` versus `British`, Acorn's
+   `2016-03-01` move-in date versus Beacon's null, and Acorn's non-primary email versus none.
+
+The comparison helper only selects fields: it excludes ID and nationality, removes address
+`move_in_date` and retains all primary contacts in their original order. Original fixture inputs
+and canonical outputs are deeply frozen before comparison. It does not repair or normalise
+values to make the comparison pass. These are fictional sample-equivalence tests, not an
+identity-matching system or a claim that Cosper preserves every canonical field.
+
+The suite runs automatically in `npm test`, the full QA gate and the existing Git hooks. See
+[verification evidence](docs/verification.md#cross-provider-consistency) for measured results.
 
 ## Scope, next steps and AI use
 
@@ -307,8 +359,8 @@ resource. OpenAPI/Swagger and explicit canonical versioning are deferred. The ca
 list and safe errors naturally overlap optional ideas but are also simple core design choices.
 
 With more time, prioritise nationality/country harmonisation, then a warning model for lossy/
-partial transformations. A real vendor
-integration would first require its actual nullability, country and telephone contracts;
+partial transformations. A real vendor integration would first require its actual nullability,
+country and telephone contracts;
 do not extrapolate the fictional Cosper assumptions into production.
 
 AI assistance was used for planning, implementation and test scaffolding. Current official

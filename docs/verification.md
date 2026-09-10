@@ -1,9 +1,13 @@
-# Core implementation verification
+# Implementation verification
 
-Local verification was performed on 10 September 2026 with Node 24.21.0 and npm 12.0.2.
-Remote GitHub checks remain the source of truth for pull-request status.
+Evidence is recorded separately for the original core implementation and the local consistency
+branch. Historical core results below are retained as recorded; they do not establish the runtime
+or test count used for subsequent branch changes. GitHub checks apply only to published commits.
 
-## Clean-checkout evidence
+## Original core baseline — clean-checkout evidence
+
+The original core record reports verification on 10 September 2026 with Node 24.21.0 and
+npm 12.0.2. The branch-specific results are recorded under [cross-provider consistency](#cross-provider-consistency).
 
 A fresh copy of the staged repository files, with no existing `node_modules`, passed:
 
@@ -56,6 +60,41 @@ also checked against an independently authored expected value from the exercise 
 The test deliberately excludes source IDs and nationality, and asserts separately that Acorn
 retains its move-in date and non-primary email while Beacon correctly lacks them. This proves
 equivalence without treating provider-specific detail as an inconsistency.
+
+Both raw inputs and canonical outputs are deeply frozen. The shared projection only selects
+fields, so mutation attempts fail without modifying the supplied fixtures or returned clients.
+
+### Initial consistency verification
+
+The initial consistency implementation passed 242 unit/API tests and 6 smoke tests under
+Node 22.22.1 / npm 10.9.4. This is separate from the original 240-test core baseline above;
+it did not meet the declared Node 24.21.0 / npm 12.0.2 verification target.
+
+### Follow-up verification — declared runtime
+
+On 10 September 2026, the follow-up changes were verified with **Node 24.21.0 and npm 12.0.2**.
+The Node archive was verified against its official SHA-256 checksum. Both tools were installed
+in an isolated temporary directory and selected for the verification session; the machine's
+default Node/npm installation was not changed.
+
+| Check | Observed result |
+| --- | --- |
+| `node --version` / `npm --version` | `v24.21.0` / `12.0.2` |
+| `npm ci` | Clean lockfile install; 62 packages installed; local hooks installed automatically |
+| `npm test -- tests/unit/consistency.test.ts` | 1 file, 2 tests passed with frozen inputs and outputs |
+| `npm run typecheck` | Source/test and production type checks passed |
+| `npm run lint` | 39 files checked; no changes required |
+| `npm test` | 9 files, 242 unit/API tests passed |
+| `npm run coverage` | 242 tests passed; transformation coverage thresholds passed |
+| `npm run test:smoke` | Production build passed; 6 real-server tests passed |
+| `npm audit --audit-level=high` | 0 vulnerabilities |
+| `npm run check` | Complete aggregate gate passed |
+| README / verification local links | 54 file and section links resolved |
+| `git diff --check` | No whitespace errors |
+
+The 242 unit/API tests include the two consistency tests; the six smoke tests are a separate
+suite. Coverage percentages remain those recorded above because no production code changed.
+This branch remains local; no GitHub CI or remote review result is claimed for it.
 
 ## Acceptance evidence
 

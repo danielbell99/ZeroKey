@@ -62,6 +62,8 @@ function normaliseSampleClients() {
   deepFreeze(beaconInput);
   const acorn = normaliseAcorn(acornInput);
   const beacon = normaliseBeacon(beaconInput);
+  deepFreeze(acorn);
+  deepFreeze(beacon);
   return { acorn, beacon, acornInput, beaconInput, acornOriginal, beaconOriginal };
 }
 
