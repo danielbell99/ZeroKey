@@ -46,6 +46,17 @@ The README curl workflow was then exercised:
 
 The temporary server was stopped after the check. The original PDF JSON fixtures remain unchanged.
 
+## Cross-provider consistency
+
+`consistency.test.ts` normalises both supplied inbound fixtures and compares the shared canonical
+projection with strict equality. The projection includes all common personal fields, one complete
+address without Acorn-only `move_in_date`, and the ordered primary email/mobile contacts. It is
+also checked against an independently authored expected value from the exercise brief.
+
+The test deliberately excludes source IDs and nationality, and asserts separately that Acorn
+retains its move-in date and non-primary email while Beacon correctly lacks them. This proves
+equivalence without treating provider-specific detail as an inconsistency.
+
 ## Acceptance evidence
 
 | Core requirement | Evidence |
@@ -55,5 +66,5 @@ The temporary server was stopped after the check. The original PDF JSON fixtures
 | 3. Cosper output | Exact target fixture, numeric mappings and selection precedence |
 | 4. Hono API | Route/error tests, safe logs and compiled-server smoke tests |
 | 5. Extensibility | Test-only Delta adapter registered through unchanged routes |
-| 6. Meaningful testing | Unit/API/smoke suites, audit and enforced coverage gate |
+| 6. Meaningful testing | Unit/API/smoke suites, strict cross-provider consistency proof, audit and enforced coverage gate |
 | 7. Documentation | Clean installation and documented curl workflow |

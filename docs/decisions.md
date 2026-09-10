@@ -61,8 +61,9 @@ Unknown contact channels become other; empty values are omitted; all non-empty c
 primary flags and original order are retained for destination-specific selection.
 
 The sample canonical outputs intentionally differ in ID, nationality, Acorn's extra email
-and its move-in date. Their independently asserted shared fields agree. Original fixtures
-remain unchanged and are never loaded by the application.
+and its move-in date. A dedicated consistency test compares their complete shared field set
+against an independently authored expectation, then asserts those legitimate differences
+separately. Original fixtures remain unchanged and are never loaded by the application.
 
 ## Core 3 — Cosper outbound boundary
 

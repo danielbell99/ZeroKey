@@ -189,7 +189,8 @@ unknown contact channels become `other`. Empty contacts and entirely empty addre
 
 IDs remain source IDs. We do not infer that matching names identify the same global client.
 The two supplied canonical results therefore legitimately differ in ID, nationality, Acorn's
-secondary email and its move-in date. Their meaningful shared fields are asserted independently.
+secondary email and its move-in date. `consistency.test.ts` normalises both original fixtures and
+strictly compares their shared canonical fields against an independently authored expectation.
 
 ## Mapping decisions and limits
 
@@ -305,8 +306,8 @@ There is no frontend, database, authentication, deployment, real outbound HTTP o
 resource. OpenAPI/Swagger and explicit canonical versioning are deferred. The capability
 list and safe errors naturally overlap optional ideas but are also simple core design choices.
 
-With more time, prioritise explicit cross-provider consistency assertions and nationality/
-country harmonisation, then a warning model for lossy/partial transformations. A real vendor
+With more time, prioritise nationality/country harmonisation, then a warning model for lossy/
+partial transformations. A real vendor
 integration would first require its actual nullability, country and telephone contracts;
 do not extrapolate the fictional Cosper assumptions into production.
 
