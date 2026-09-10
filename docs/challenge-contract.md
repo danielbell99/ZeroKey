@@ -71,6 +71,52 @@ interface CanonicalContactDetail {
 
 The implementation must document choices for `engaged` and a null legal sex because Cosper has no direct equivalent. It must also document primary-contact tie-break and fallback rules.
 
+## Complete source vocabularies from the brief
+
+Acorn gender labels: `Male`, `Female`, `Unspecified`. Marital labels: `Single`, `Married`,
+`Civil Partner`, `Living Together`, `Engaged`, `Separated`, `Divorced`, `Widowed`, `Unknown`.
+Contact channels: `EmailAddress`, `MobilePhone`, `Landline`, plus unrecognised values.
+
+Beacon gender labels: `Male`, `Female`, `Non-Binary`, `Unknown`. Marital labels: `Single`,
+`Married`, `Civil Partnership`, `Cohabiting`, `Intend to Marry`, `Separated`, `Divorced`,
+`Widowed`, `Unknown`. Numeric contact codes: 1 email, 2 mobile, 3 telephone; other codes
+must be handled gracefully. Beacon dates use DD/MM/YYYY, its country example uses GBR,
+and its primary address flag is the string `"true"`.
+
+The source enum vocabularies are explicitly non-exhaustive. `Betrothed` and other unknown
+marital labels must become canonical `unknown` without throwing. Missing optional values
+may be absent, blank or null. The sample records must agree on meaningful shared facts,
+but legitimate source differences such as Acorn's secondary email must not be erased.
+
+## Cosper target contract
+
+The exact JSON example is preserved separately in the Cosper request fixture. Its fields are
+`ClientRef`, `Forename`, `Surname`, `DateOfBirth`, `Sex`, `MaritalStatus`, `AddressLine1`,
+`AddressLine2`, `Town`, `Postcode`, `Country`, `Email`, and `Telephone`.
+
+| Canonical value | Cosper Sex code |
+| --- | --- |
+| male | 0 |
+| female | 1 |
+| other / unspecified | 2 |
+| null | Implementation must decide and document |
+
+| Canonical marital value | Cosper code |
+| --- | --- |
+| unknown | 0 |
+| single | 1 |
+| married | 2 |
+| cohabiting | 3 |
+| civil-partner | 4 |
+| separated | 5 |
+| divorced | 6 |
+| widowed | 7 |
+| engaged | No direct code; implementation must decide and document |
+
+Cosper expects a DD/MM/YYYY date, the full country name and a single chosen email/telephone.
+The brief does not fully define destination nullability or phone presentation beyond its
+sample, so additional choices belong in the README/decision history, not in this contract.
+
 ## HTTP API
 
 ```text
