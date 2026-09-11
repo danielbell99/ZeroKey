@@ -12,16 +12,34 @@ Completed stretch goals are [resilience](#api-resilience), [round-trip consisten
 
 ## Quick start
 
-Prerequisite: Node 24.21.0 and npm 12.0.2. If you use nvm, run `nvm install && nvm use` first.
+No database, credentials, environment file or external provider account is needed. Start from a
+fresh clone, then use the same Node and npm versions as CI:
 
 ```sh
-# Terminal 1 — from the repository root
+# Step 1 — clone and enter the repository (skip if it is already checked out)
+git clone https://github.com/danielbell99/ZeroKey.git
+cd ZeroKey
+
+# Step 2 — select Node 24.21.0 and install npm 12.0.2
+# Requires nvm: https://github.com/nvm-sh/nvm
+nvm install
+nvm use
+npm install --global npm@12.0.2
+node --version # v24.21.0
+npm --version  # 12.0.2
+
+# Step 3 — install the locked dependencies
 npm ci
 # Installs the repository-owned pre-commit and pre-push QA gates automatically.
-npm run dev
 
-# Terminal 2 — confirm the service is running
-curl --fail-with-body -sS http://127.0.0.1:3000/v1/providers
+# Step 4 — Terminal 1: start the local service
+npm run dev
+# If port 3000 is already occupied, use: PORT=3001 npm run dev
+
+# Step 5 — Terminal 2: confirm the service is running
+# Use port 3001 here too if you used the alternate command above.
+export ZEROKEY_URL='http://127.0.0.1:3000'
+curl --fail-with-body -sS "$ZEROKEY_URL/v1/providers"
 ```
 
 Normalise a supplied fixture:
@@ -41,22 +59,23 @@ npm run check
 
 ## Detailed setup
 
-Use **Node 24.21.0 LTS** and **npm 12.0.2**. The Node version is recorded in `.nvmrc`;
-if you use nvm, run `nvm install && nvm use`. Otherwise install that Node LTS release
-using your preferred Node installation method. No database, credentials or environment file
-is needed.
+Use **Node 24.21.0 LTS** and **npm 12.0.2**. The Node version is recorded in `.nvmrc`; the
+commands in [Quick start](#quick-start) select that version and install the pinned npm release.
+If you do not use nvm, install those exact versions by your preferred method, verify them with
+`node --version` and `npm --version`, then continue at `npm ci`.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-`npm install && npm run dev` also works. `npm ci` is preferred for reproducing the lockfile.
-Its `prepare` step installs the repository-owned hooks automatically. The installer affects only
-this repository and refuses to overwrite another hooks path. If you installed dependencies with
-`--ignore-scripts`, run `npm run hooks:install` once instead.
+`npm ci` is the reproducible path: it uses the committed lockfile. Its `prepare` step installs
+the repository-owned hooks automatically. The installer affects only this repository and refuses
+to overwrite another hooks path. If you installed dependencies with `--ignore-scripts`, run
+`npm run hooks:install` once instead.
 
-The service listens at **http://127.0.0.1:3000**. Override the port with `PORT=3001 npm run dev`.
+The service listens at **http://127.0.0.1:3000**. If that port is occupied, start it with
+`PORT=3001 npm run dev` and use `http://127.0.0.1:3001` for `ZEROKEY_URL` in every example.
 An invalid or occupied port fails clearly; the service never stops another process. Stop with
 Ctrl-C. SIGINT/SIGTERM trigger graceful shutdown with a five-second deadline.
 
@@ -65,6 +84,7 @@ To run compiled JavaScript:
 ```sh
 npm run build
 npm start
+# If port 3000 is occupied, use: PORT=3001 npm start
 ```
 
 The app uses TypeScript 7, Hono 4, Zod 4 and Vitest 5. Direct dependencies are pinned.
@@ -77,7 +97,8 @@ script approval is required.
 Run these commands from the repository root in a second terminal:
 
 ```sh
-ZEROKEY_URL=http://127.0.0.1:3000
+export ZEROKEY_URL='http://127.0.0.1:3000'
+# If the server was started with PORT=3001, use http://127.0.0.1:3001 instead.
 
 curl --fail-with-body -sS "$ZEROKEY_URL/v1/providers"
 
@@ -319,6 +340,11 @@ coverage thresholds, the production build, compiled-server smoke tests and
 hooks. Use `npm run lint:fix` or `npm run format` for local formatting fixes, then run the checks
 again.
 
+The Quick start was independently run from a clean checkout on 11 September 2026: its locked
+install, provider/client/address curl flows, validation example, OpenAPI/Swagger endpoints,
+compiled server and `npm run check` all completed successfully. The full command evidence is in
+[docs/verification.md](docs/verification.md).
+
 Tests assert complete fixture outputs plus every listed enum, missing/bad data, calendar
 boundaries, source paths, primary-selection precedence, input immutability, extension behaviour
 and safe error responses/logging. Smoke tests bind real loopback ports, run the compiled entry
@@ -463,8 +489,7 @@ for the authoritative runtime capability list.
 In the first terminal, from the repository root:
 
 ```sh
-nvm install && nvm use
-npm ci
+# Complete steps 1–3 in Quick start first, then:
 npm run dev
 ```
 
@@ -472,17 +497,15 @@ Leave that server running. In a second terminal, use the exact variable name bel
 
 ```sh
 export ZEROKEY_URL='http://127.0.0.1:3000'
+# If the server was started with PORT=3001, use http://127.0.0.1:3001 instead.
 
 curl --fail-with-body -sS "$ZEROKEY_URL/openapi.json"
 open "$ZEROKEY_URL/docs"
 ```
 
 The first command prints the generated OpenAPI JSON. The second opens the interactive local
-reference in the default browser. This screenshot records a successful manual Swagger check:
-
-![Swagger UI showing all documented ZeroKey API operations and schemas](docs/openapi-swagger-ui.png)
-
-This later capture shows the completed standalone address operations and their generated schemas:
+reference in the default browser. This screenshot records the completed standalone address
+operations and their generated schemas:
 
 ![Swagger UI showing client and address operations plus address resource schemas](docs/openapi-swagger-addresses.png)
 
