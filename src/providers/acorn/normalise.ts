@@ -6,16 +6,16 @@ import {
   type LegalSex,
   type MaritalStatus,
 } from "../../domain/client.js";
-import { countryCode, normaliseNationality } from "../../shared/countries.js";
+import { normaliseNationality } from "../../shared/countries.js";
 import {
   enumKey,
   fullName,
-  hasAddressData,
   normaliseContact,
   normaliseName,
   normaliseNi,
 } from "../../shared/normalisation.js";
 import { PayloadValidationError, parseInput } from "../../shared/validation.js";
+import { mapAcornAddress } from "./address.js";
 import { AcornClientSchema } from "./schema.js";
 
 const sexes = new Map<string, LegalSex>([
@@ -82,22 +82,18 @@ export function normaliseAcorn(input: unknown): CanonicalClient {
     marital_status: maritalStatuses.get(enumKey(person?.maritalStatus)) ?? "unknown",
     nationality: acornNationality(person?.nationalityCountry),
     addresses: raw.addresses
-      .map((address) => {
-        const lines = [address.buildingName, address.street, address.locality].filter(
-          (part) => part !== null,
-        );
-        return {
-          primary: address.isPrimary,
-          line1: lines[0] ?? null,
-          line2: lines.slice(1).join(", ") || null,
-          town_city: address.town,
-          county: address.region,
-          postcode: address.postcode,
-          country: countryCode(address.countryName),
-          move_in_date: address.movedIn,
-        };
-      })
-      .filter(hasAddressData),
+      .map(mapAcornAddress)
+      .filter((address) =>
+        [
+          address.line1,
+          address.line2,
+          address.town_city,
+          address.county,
+          address.postcode,
+          address.country,
+          address.move_in_date,
+        ].some((value) => value !== null),
+      ),
     contact_details: raw.contactPoints.flatMap((contact, index) =>
       normaliseContact(
         channels.get(enumKey(contact.channel)) ?? "other",

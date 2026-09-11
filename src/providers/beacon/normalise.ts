@@ -6,16 +6,16 @@ import {
   type LegalSex,
   type MaritalStatus,
 } from "../../domain/client.js";
-import { countryCode, normaliseNationality } from "../../shared/countries.js";
+import { normaliseNationality } from "../../shared/countries.js";
 import {
   enumKey,
   fullName,
-  hasAddressData,
   normaliseContact,
   normaliseName,
   normaliseNi,
 } from "../../shared/normalisation.js";
 import { parseInput } from "../../shared/validation.js";
+import { mapBeaconAddress } from "./address.js";
 import { AttributesSchema, BeaconClientSchema, FormattedValuesSchema, parseBag } from "./schema.js";
 
 const sexes = new Map<string, LegalSex>([
@@ -61,26 +61,18 @@ export function normaliseBeacon(input: unknown): CanonicalClient {
     marital_status: maritalStatuses.get(enumKey(formatted.familystatuscode)) ?? "unknown",
     nationality: normaliseNationality(attributes.t4a_nationality),
     addresses: raw.addresses
-      .map((address) => {
-        let line1 = address.line1;
-        let line2 = address.line2;
-        const comma = line1?.indexOf(",") ?? -1;
-        if (line1 !== null && line2 === null && comma >= 0) {
-          line2 = line1.slice(comma + 1).trim() || null;
-          line1 = line1.slice(0, comma).trim() || null;
-        }
-        return {
-          primary: address.primary,
-          line1,
-          line2,
-          town_city: address.city,
-          county: address.county,
-          postcode: address.postcode,
-          country: countryCode(address.country),
-          move_in_date: null,
-        };
-      })
-      .filter(hasAddressData),
+      .map(mapBeaconAddress)
+      .filter((address) =>
+        [
+          address.line1,
+          address.line2,
+          address.town_city,
+          address.county,
+          address.postcode,
+          address.country,
+          address.move_in_date,
+        ].some((value) => value !== null),
+      ),
     contact_details: raw.contacts.flatMap((contact, index) =>
       normaliseContact(
         contact.type == null ? "other" : (channels.get(contact.type) ?? "other"),

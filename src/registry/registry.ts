@@ -1,10 +1,13 @@
 import { z } from "@hono/zod-openapi";
+import type { CanonicalAddressResource } from "../domain/address.js";
 import { CANONICAL_V1_VERSION, type CanonicalClient } from "../domain/client.js";
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
 export type JsonObject = { [key: string]: JsonValue };
 export const OperationSchema = z.enum(["normalise", "build-request"]);
 export type Operation = z.infer<typeof OperationSchema>;
+export const ResourceSchema = z.enum(["clients", "addresses"]);
+export type Resource = z.infer<typeof ResourceSchema>;
 export type BuildResult<TRequest extends JsonObject = JsonObject> = {
   request: TRequest;
   response: { status: "created"; clientRef: string; simulated: true };
@@ -13,6 +16,10 @@ export interface ProviderAdapter<TRequest extends JsonObject = JsonObject> {
   readonly slug: string;
   readonly normalise?: (raw: unknown) => CanonicalClient;
   readonly buildRequest?: (client: CanonicalClient) => BuildResult<TRequest>;
+  readonly buildResultSchema?: z.ZodType<BuildResult<TRequest>>;
+  readonly normaliseAddress?: (raw: unknown) => CanonicalAddressResource;
+  readonly buildAddressRequest?: (address: CanonicalAddressResource) => BuildResult<JsonObject>;
+  readonly addressBuildResultSchema?: z.ZodType<BuildResult<JsonObject>>;
 }
 
 export const BuildResultSchema = z.strictObject({
@@ -38,12 +45,39 @@ export function createRegistry(adapters: readonly ProviderAdapter[]) {
   for (const adapter of adapters) {
     if (!/^[a-z][a-z0-9-]*$/u.test(adapter.slug)) throw new Error("Invalid provider slug");
     if (providers.has(adapter.slug)) throw new Error("Duplicate provider slug");
-    if (!adapter.normalise && !adapter.buildRequest) throw new Error("Provider has no operations");
+    if (
+      !adapter.normalise &&
+      !adapter.buildRequest &&
+      !adapter.normaliseAddress &&
+      !adapter.buildAddressRequest
+    )
+      throw new Error("Provider has no operations");
     if (adapter.normalise !== undefined && typeof adapter.normalise !== "function") {
       throw new Error("Provider normalise operation must be a function");
     }
     if (adapter.buildRequest !== undefined && typeof adapter.buildRequest !== "function") {
       throw new Error("Provider build-request operation must be a function");
+    }
+    if (adapter.normaliseAddress !== undefined && typeof adapter.normaliseAddress !== "function") {
+      throw new Error("Provider address normalise operation must be a function");
+    }
+    if (
+      adapter.buildAddressRequest !== undefined &&
+      typeof adapter.buildAddressRequest !== "function"
+    ) {
+      throw new Error("Provider address build-request operation must be a function");
+    }
+    if (
+      adapter.buildResultSchema !== undefined &&
+      typeof adapter.buildResultSchema.parse !== "function"
+    ) {
+      throw new Error("Provider build-result schema must be a Zod schema");
+    }
+    if (
+      adapter.addressBuildResultSchema !== undefined &&
+      typeof adapter.addressBuildResultSchema.parse !== "function"
+    ) {
+      throw new Error("Provider address build-result schema must be a Zod schema");
     }
     providers.set(adapter.slug, Object.freeze({ ...adapter }));
   }
@@ -51,15 +85,23 @@ export function createRegistry(adapters: readonly ProviderAdapter[]) {
     get(slug: string): ProviderAdapter | undefined {
       return providers.get(slug);
     },
-    list(): Array<z.output<typeof ProviderCapabilitySchema>> {
-      return [...providers.values()].map((adapter) => ({
-        slug: adapter.slug,
-        canonical_version: CANONICAL_V1_VERSION,
-        supports: [
-          ...(adapter.normalise ? ["normalise" as const] : []),
-          ...(adapter.buildRequest ? ["build-request" as const] : []),
-        ],
-      }));
+    list(resource: Resource = "clients"): Array<z.output<typeof ProviderCapabilitySchema>> {
+      return [...providers.values()]
+        .map((adapter) => ({
+          slug: adapter.slug,
+          canonical_version: CANONICAL_V1_VERSION,
+          supports:
+            resource === "clients"
+              ? [
+                  ...(adapter.normalise ? ["normalise" as const] : []),
+                  ...(adapter.buildRequest ? ["build-request" as const] : []),
+                ]
+              : [
+                  ...(adapter.normaliseAddress ? ["normalise" as const] : []),
+                  ...(adapter.buildAddressRequest ? ["build-request" as const] : []),
+                ],
+        }))
+        .filter((capability) => capability.supports.length > 0);
     },
   });
 }

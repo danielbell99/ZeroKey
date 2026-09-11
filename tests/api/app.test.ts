@@ -244,6 +244,7 @@ describe("unexpected failures stay distinct from caller errors", () => {
           requestId: response.headers.get("x-request-id"),
           provider: null,
           operation: null,
+          resource: null,
         }),
       );
     } finally {

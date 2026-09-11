@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import type { CanonicalAddressResource } from "../../src/domain/address.js";
 import type { CanonicalClient } from "../../src/domain/client.js";
 import { createApp } from "../../src/http/app.js";
 import { defaultRegistry } from "../../src/registry/providers.js";
@@ -24,9 +25,21 @@ import {
 function trackedApp(endpoint: PostEndpoint) {
   const original = defaultRegistry().get(endpoint.provider);
   if (!original) throw new Error("Missing test provider");
-  const normalise = original.normalise ? vi.fn(original.normalise) : undefined;
-  const buildRequest = original.buildRequest ? vi.fn(original.buildRequest) : undefined;
-  const invoke = normalise ?? buildRequest;
+  const normalise =
+    endpoint.resource === "clients" && original.normalise ? vi.fn(original.normalise) : undefined;
+  const buildRequest =
+    endpoint.resource === "clients" && original.buildRequest
+      ? vi.fn(original.buildRequest)
+      : undefined;
+  const normaliseAddress =
+    endpoint.resource === "addresses" && original.normaliseAddress
+      ? vi.fn(original.normaliseAddress)
+      : undefined;
+  const buildAddressRequest =
+    endpoint.resource === "addresses" && original.buildAddressRequest
+      ? vi.fn(original.buildAddressRequest)
+      : undefined;
+  const invoke = normalise ?? buildRequest ?? normaliseAddress ?? buildAddressRequest;
   if (!invoke) throw new Error("Missing test operation");
   const logFailure = vi.fn();
   const registry = createRegistry([
@@ -34,6 +47,8 @@ function trackedApp(endpoint: PostEndpoint) {
       ...original,
       ...(normalise ? { normalise } : {}),
       ...(buildRequest ? { buildRequest } : {}),
+      ...(normaliseAddress ? { normaliseAddress } : {}),
+      ...(buildAddressRequest ? { buildAddressRequest } : {}),
     },
   ]);
   return { app: createApp({ registry, logFailure }), invoke, logFailure };
@@ -133,9 +148,14 @@ describe("dispatch precedes body processing", () => {
   it.each([
     { path: "/v1/missing/clients/normalise", status: 404, code: "unknown_provider" },
     { path: "/v1/missing/clients/build-request", status: 404, code: "unknown_provider" },
+    { path: "/v1/missing/addresses/normalise", status: 404, code: "unknown_provider" },
+    { path: "/v1/missing/addresses/build-request", status: 404, code: "unknown_provider" },
     { path: "/v1/cosper/clients/normalise", status: 400, code: "unsupported_operation" },
     { path: "/v1/acorn/clients/build-request", status: 400, code: "unsupported_operation" },
     { path: "/v1/beacon/clients/build-request", status: 400, code: "unsupported_operation" },
+    { path: "/v1/cosper/addresses/normalise", status: 400, code: "unsupported_operation" },
+    { path: "/v1/acorn/addresses/build-request", status: 400, code: "unsupported_operation" },
+    { path: "/v1/beacon/addresses/build-request", status: 400, code: "unsupported_operation" },
   ] as const)(
     "$path preserves $code even with an unreadable body",
     async ({ path, status, code }) => {
@@ -441,6 +461,9 @@ const faultStages = [
   "acorn",
   "beacon",
   "cosper",
+  "acorn-address",
+  "beacon-address",
+  "cosper-address",
 ] as const;
 type FaultStage = (typeof faultStages)[number];
 
@@ -454,15 +477,21 @@ function injectedFault(stage: FaultStage, fault: () => unknown, brokenLogger = f
   let request: RequestInit = {};
   let provider: string | null = null;
   let operation: "normalise" | "build-request" | null = null;
+  let resource: "clients" | "addresses" | null = null;
   if (stage === "discovery") {
     registry = {
       ...healthy,
       list: vi.fn(healthy.list).mockImplementationOnce(fault as ProviderRegistry["list"]),
     };
   } else {
+    const addressStage = stage.endsWith("-address");
+    const providerSlug = addressStage ? stage.slice(0, -"-address".length) : stage;
     const endpoint =
-      postEndpoints.find((entry) => entry.provider === stage) ??
-      (stage === "lookup-build" ? postEndpoints[2] : postEndpoints[0]);
+      postEndpoints.find(
+        (entry) =>
+          entry.provider === providerSlug &&
+          entry.resource === (addressStage ? "addresses" : "clients"),
+      ) ?? (stage === "lookup-build" ? postEndpoints[2] : postEndpoints[0]);
     path = endpoint.path;
     request = jsonRequest(endpoint.body());
     if (stage.startsWith("lookup-")) {
@@ -476,21 +505,34 @@ function injectedFault(stage: FaultStage, fault: () => unknown, brokenLogger = f
       registry = createRegistry([
         {
           ...adapter,
-          ...(adapter.normalise
-            ? {
-                normalise: vi
-                  .fn(adapter.normalise)
-                  .mockImplementationOnce(fault as () => CanonicalClient),
-              }
-            : {
-                buildRequest: vi
-                  .fn(adapter.buildRequest)
-                  .mockImplementationOnce(fault as () => BuildResult),
-              }),
+          ...(endpoint.resource === "clients"
+            ? endpoint.operation === "normalise"
+              ? {
+                  normalise: vi
+                    .fn(adapter.normalise)
+                    .mockImplementationOnce(fault as () => CanonicalClient),
+                }
+              : {
+                  buildRequest: vi
+                    .fn(adapter.buildRequest)
+                    .mockImplementationOnce(fault as () => BuildResult),
+                }
+            : endpoint.operation === "normalise"
+              ? {
+                  normaliseAddress: vi
+                    .fn(adapter.normaliseAddress)
+                    .mockImplementationOnce(fault as () => CanonicalAddressResource),
+                }
+              : {
+                  buildAddressRequest: vi
+                    .fn(adapter.buildAddressRequest)
+                    .mockImplementationOnce(fault as () => BuildResult),
+                }),
         },
       ]);
       provider = endpoint.provider;
       operation = endpoint.operation;
+      resource = endpoint.resource;
     }
   }
   return {
@@ -500,6 +542,7 @@ function injectedFault(stage: FaultStage, fault: () => unknown, brokenLogger = f
     request,
     provider,
     operation,
+    resource,
   };
 }
 
@@ -536,6 +579,7 @@ describe("internal failures resolve to a safe response and recover", () => {
               requestId,
               provider: test.provider,
               operation: test.operation,
+              resource: test.resource,
             },
           ],
         ]);
@@ -731,6 +775,7 @@ describe("documentation and correlation remain independent", () => {
             requestId: id,
             provider: test.provider,
             operation: test.operation,
+            resource: "clients",
           });
         return id;
       }),

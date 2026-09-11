@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { CANONICAL_V1_VERSION } from "../../src/domain/client.js";
+import { normaliseAcornAddress } from "../../src/providers/acorn/address.js";
 import { createRegistry, type ProviderAdapter } from "../../src/registry/registry.js";
 import { minimalClient } from "../helpers/client.js";
 
@@ -54,6 +55,13 @@ describe("provider registry boundaries", () => {
     }>();
     expect(createRegistry([adapter]).list()).toEqual([
       { slug: "delta", supports: ["build-request"], canonical_version: CANONICAL_V1_VERSION },
+    ]);
+  });
+  it("derives separate address capabilities without changing client discovery", () => {
+    const registry = createRegistry([{ slug: "delta", normaliseAddress: normaliseAcornAddress }]);
+    expect(registry.list()).toEqual([]);
+    expect(registry.list("addresses")).toEqual([
+      { slug: "delta", supports: ["normalise"], canonical_version: CANONICAL_V1_VERSION },
     ]);
   });
 });

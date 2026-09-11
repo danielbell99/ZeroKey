@@ -101,66 +101,97 @@ describe.each(postEndpoints)("real HTTP resilience: $provider", (endpoint) => {
 });
 
 describe("real HTTP internal fault recovery", () => {
-  it.each(["discovery", "acorn", "beacon", "cosper"] as const)(
-    "recovers from an injected %s failure",
-    async (stage) => {
-      const logFailure = vi.fn();
-      const healthy = defaultRegistry();
-      let registry = healthy;
-      let path = "/v1/providers";
-      let init: RequestInit = {};
-      if (stage === "discovery") {
-        registry = {
-          ...healthy,
-          list: vi.fn(healthy.list).mockImplementationOnce(() => {
-            throw null;
-          }),
-        };
-      } else {
-        const endpoint = postEndpoints.find((entry) => entry.provider === stage);
-        const adapter = healthy.get(stage);
-        if (!endpoint || !adapter) throw new Error("Missing test provider");
-        path = endpoint.path;
-        init = jsonRequest(endpoint.body());
-        const fault = () => {
-          throw PRIVATE_MARKER;
-        };
-        registry = createRegistry([
-          {
-            ...adapter,
-            ...(adapter.normalise
+  it.each([
+    "discovery",
+    "acorn",
+    "beacon",
+    "cosper",
+    "acorn-address",
+    "beacon-address",
+    "cosper-address",
+  ] as const)("recovers from an injected %s failure", async (stage) => {
+    const logFailure = vi.fn();
+    const healthy = defaultRegistry();
+    let registry = healthy;
+    let path = "/v1/providers";
+    let init: RequestInit = {};
+    if (stage === "discovery") {
+      registry = {
+        ...healthy,
+        list: vi.fn(healthy.list).mockImplementationOnce(() => {
+          throw null;
+        }),
+      };
+    } else {
+      const addressStage = stage.endsWith("-address");
+      const provider = addressStage ? stage.slice(0, -"-address".length) : stage;
+      const resource = addressStage ? "addresses" : "clients";
+      const endpoint = postEndpoints.find(
+        (entry) => entry.provider === provider && entry.resource === resource,
+      );
+      const adapter = healthy.get(provider);
+      if (!endpoint || !adapter) throw new Error("Missing test provider");
+      path = endpoint.path;
+      init = jsonRequest(endpoint.body());
+      const fault = () => {
+        throw PRIVATE_MARKER;
+      };
+      registry = createRegistry([
+        {
+          ...adapter,
+          ...(endpoint.resource === "clients"
+            ? endpoint.operation === "normalise"
               ? { normalise: vi.fn(adapter.normalise).mockImplementationOnce(fault) }
-              : { buildRequest: vi.fn(adapter.buildRequest).mockImplementationOnce(fault) }),
+              : { buildRequest: vi.fn(adapter.buildRequest).mockImplementationOnce(fault) }
+            : endpoint.operation === "normalise"
+              ? { normaliseAddress: vi.fn(adapter.normaliseAddress).mockImplementationOnce(fault) }
+              : {
+                  buildAddressRequest: vi
+                    .fn(adapter.buildAddressRequest)
+                    .mockImplementationOnce(fault),
+                }),
+        },
+      ]);
+    }
+    const server = await startServer(0, createApp({ registry, logFailure }));
+    try {
+      const url = `http://127.0.0.1:${server.port}${path}`;
+      const id = await expectHttpError(
+        await fetch(url, { ...init, signal: AbortSignal.timeout(5000) }),
+        500,
+        "internal_error",
+      );
+      expect(logFailure.mock.calls).toEqual([
+        [
+          {
+            event: "unexpected_error",
+            requestId: id,
+            provider:
+              stage === "discovery"
+                ? null
+                : stage.endsWith("-address")
+                  ? stage.slice(0, -"-address".length)
+                  : stage,
+            operation:
+              stage === "discovery" || stage === "acorn" || stage === "beacon"
+                ? stage === "discovery"
+                  ? null
+                  : "normalise"
+                : stage === "acorn-address" || stage === "beacon-address"
+                  ? "normalise"
+                  : "build-request",
+            resource:
+              stage === "discovery" ? null : stage.endsWith("-address") ? "addresses" : "clients",
           },
-        ]);
-      }
-      const server = await startServer(0, createApp({ registry, logFailure }));
-      try {
-        const url = `http://127.0.0.1:${server.port}${path}`;
-        const id = await expectHttpError(
-          await fetch(url, { ...init, signal: AbortSignal.timeout(5000) }),
-          500,
-          "internal_error",
-        );
-        expect(logFailure.mock.calls).toEqual([
-          [
-            {
-              event: "unexpected_error",
-              requestId: id,
-              provider: stage === "discovery" ? null : stage,
-              operation:
-                stage === "discovery" ? null : stage === "cosper" ? "build-request" : "normalise",
-            },
-          ],
-        ]);
-        const recovered = await fetch(url, { ...init, signal: AbortSignal.timeout(5000) });
-        expect(recovered.status).toBe(200);
-        expect(recovered.headers.get("x-request-id")).not.toBe(id);
-        await recovered.json();
-        expect(logFailure).toHaveBeenCalledTimes(1);
-      } finally {
-        await server.close();
-      }
-    },
-  );
+        ],
+      ]);
+      const recovered = await fetch(url, { ...init, signal: AbortSignal.timeout(5000) });
+      expect(recovered.status).toBe(200);
+      expect(recovered.headers.get("x-request-id")).not.toBe(id);
+      await recovered.json();
+      expect(logFailure).toHaveBeenCalledTimes(1);
+    } finally {
+      await server.close();
+    }
+  });
 });

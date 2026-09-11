@@ -7,22 +7,56 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 export const postEndpoints = [
   {
+    resource: "clients",
     provider: "acorn",
     operation: "normalise",
     path: "/v1/acorn/clients/normalise",
     body: () => fixture("acorn-client"),
   },
   {
+    resource: "clients",
     provider: "beacon",
     operation: "normalise",
     path: "/v1/beacon/clients/normalise",
     body: () => fixture("beacon-client"),
   },
   {
+    resource: "clients",
     provider: "cosper",
     operation: "build-request",
     path: "/v1/cosper/clients/build-request",
     body: () => expectedAcorn(),
+  },
+  {
+    resource: "addresses",
+    provider: "acorn",
+    operation: "normalise",
+    path: "/v1/acorn/addresses/normalise",
+    body: () => {
+      const raw = fixture("acorn-client") as { addresses: unknown[] };
+      return { client_id: "90210", address: raw.addresses[0] };
+    },
+  },
+  {
+    resource: "addresses",
+    provider: "beacon",
+    operation: "normalise",
+    path: "/v1/beacon/addresses/normalise",
+    body: () => {
+      const raw = fixture("beacon-client") as { addresses: unknown[] };
+      return { client_id: "90210", address: raw.addresses[0] };
+    },
+  },
+  {
+    resource: "addresses",
+    provider: "cosper",
+    operation: "build-request",
+    path: "/v1/cosper/addresses/build-request",
+    body: () => ({
+      schema_version: "v1",
+      client_id: "90210",
+      address: expectedAcorn().addresses[0],
+    }),
   },
 ] as const;
 export type PostEndpoint = (typeof postEndpoints)[number];
@@ -44,8 +78,10 @@ export function jsonRequest(body: unknown): RequestInit {
 
 /** Valid JSON padded to a precise UTF-8 byte count, without changing its parsed fields. */
 export function sizedJson(endpoint: PostEndpoint, bytes: number): string {
-  const idField = endpoint.provider === "beacon" ? "recordId" : "id";
-  const base = JSON.stringify({ ...(endpoint.body() as object), [idField]: "client-é-東京" });
+  const body = structuredClone(endpoint.body()) as Record<string, unknown>;
+  if (endpoint.resource === "addresses") body.client_id = "client-é-東京";
+  else body[endpoint.provider === "beacon" ? "recordId" : "id"] = "client-é-東京";
+  const base = JSON.stringify(body);
   const remaining = bytes - Buffer.byteLength(base);
   if (remaining < 0) throw new Error("Requested body size is below fixture size");
   return base + " ".repeat(remaining);
