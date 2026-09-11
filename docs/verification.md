@@ -171,6 +171,40 @@ The dedicated assertions distinguish caller errors from implementation defects: 
 versions return a safe 422 and never call a provider builder; an adapter that omits the version
 returns a safe 500. Compiled-server smoke coverage confirms both inbound providers return v1.
 
+## API resilience — 11 September 2026
+
+Verified with Node 24.21.0 / npm 12.0.2. The new API suite covers all three POST endpoints,
+discovery failures and the two documentation endpoints. The first regression run failed 30
+non-Error exception cases; all now pass through the shared safe boundary. Existing overlapping
+single-route cases were consolidated rather than counted twice.
+
+| Command | Observed result |
+| --- | --- |
+| `npm run test:unit` | 246 passed in 8 files |
+| `npm run test:api` | 216 passed in 3 files |
+| `npm run test:resilience` | 195 passed; included in the API total |
+| `npm run test:smoke` | 22 passed in 2 files; 16 dedicated resilience scenarios |
+| `npm run format:check` | Passed without changes |
+| `npm run check` | Type checking, linting, all tests, coverage thresholds, production build and audit passed; zero vulnerabilities |
+| Coverage | 86.83% statements, 87.61% branches, 86.04% functions, 87.50% lines; HTTP application has 100% line/function coverage |
+| `git diff --check` | Passed |
+
+The total is **484 distinct tests**. The README lists every test file and commands for running
+each folder, a single file or verbose individual test names. In-process cases assert exact
+status/code/envelope, safe original issue paths, generated request IDs, no unexpected logging
+for caller errors and one safe logging attempt for internal failures. Fault injection covers
+malformed registry listings, ordinary/Zod/non-Error exceptions, invalid generated canonical or
+build data, and a failing logger. Tests prove subsequent success and concurrent request isolation.
+
+The byte-boundary matrix covers 1 MiB minus one, exactly 1 MiB and one byte over for every POST,
+with accurate/absent Content-Length and multibyte text. Real HTTP verifies each POST's malformed,
+schema-invalid and oversized requests plus genuinely chunked overflow. It also verifies internal
+fault/recovery for discovery and each adapter. Compiled CLI smoke tests execute 422-then-200 calls
+for all POST endpoints before checking clean shutdown on both signals.
+
+Sandbox-only listener failures were environmental (loopback listen EPERM); rerunning with
+loopback access passed. No test was skipped, silenced or weakened to accommodate that restriction.
+
 ## Acceptance evidence
 
 | Core requirement | Evidence |

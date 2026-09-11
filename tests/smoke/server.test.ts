@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { describe, expect, it } from "vitest";
 import { startServer } from "../../src/http/listen.js";
 import { fixture } from "../helpers/fixtures.js";
+import { expectHttpError, jsonRequest, postEndpoints } from "../helpers/http.js";
 
 async function unusedPort(): Promise<number> {
   const reservation = createServer();
@@ -77,6 +78,23 @@ describe("real Node HTTP server", () => {
           });
         });
         const url = `http://127.0.0.1:${port}`;
+        // Exercise the compiled entry point's failure boundary, then prove recovery.
+        for (const endpoint of postEndpoints) {
+          await expectHttpError(
+            await fetch(`${url}${endpoint.path}`, {
+              ...jsonRequest(null),
+              signal: AbortSignal.timeout(5000),
+            }),
+            422,
+            "validation_failed",
+          );
+          const recovered = await fetch(`${url}${endpoint.path}`, {
+            ...jsonRequest(endpoint.body()),
+            signal: AbortSignal.timeout(5000),
+          });
+          expect(recovered.status).toBe(200);
+          await recovered.json();
+        }
         const openapi = await fetch(`${url}/openapi.json`);
         expect(openapi.status).toBe(200);
         expect(openapi.headers.get("content-type")).toContain("application/json");

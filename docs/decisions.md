@@ -111,6 +111,27 @@ connections, with a five-second bound for active connections. Occupied ports fai
 no unrelated process is stopped. Smoke tests exercise both the real HTTP adapter and the
 compiled command-line entry point, including startup failures and both shutdown signals.
 
+## Stretch goal 1 — API resilience and recovery
+
+Resilience extends the existing HTTP contract rather than changing provider mapping rules.
+Valid partial inputs still normalise; invalid known fields fail atomically with original paths.
+The real Hono request pipeline is tested using actual adapters, with dependency injection only
+for failures that healthy implementations cannot produce, such as invalid generated output.
+
+Hono's error callback handles Error instances, but JavaScript permits throwing other values.
+Regression tests first reproduced 30 escaping cases across discovery, registry lookups and all
+three supported adapter operations. The outer request-ID middleware now catches these values
+and delegates to the same unknown-accepting failure handler as onError. Caller validation stays
+422; internal defects stay 500. Thrown values are never stringified or added to logs, and an
+already handled error is not logged twice. Logging itself remains best-effort and synchronous.
+
+The deterministic test matrix verifies response shape, safe issue paths, stopping points,
+single correlated logging attempts, request isolation and recovery. Payload-size tests use
+UTF-8 byte counts at the 1 MiB boundary. Real HTTP checks include actual chunked uploads and
+injected dependency failures; compiled-entry-point tests also make failed then successful calls.
+No production fault switches, global process handlers, asynchronous adapter contract, new
+dependencies, retries or schema changes are required. Coverage remains supplementary evidence.
+
 ## Core 5 / stretch goal 5 — additive extension and canonical versioning
 
 A provider exports typed functions plus a slug. Its raw schema and mapping stay together;

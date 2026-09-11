@@ -5,7 +5,7 @@ It implements the seven core requirements from the take-home exercise. The provi
 sample clients are fictional. Cosper responses are simulations; no external provider is called.
 
 The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests.
-Completed stretch goals are [round-trip consistency](#round-trip-consistency),
+Completed stretch goals are [resilience](#api-resilience), [round-trip consistency](#round-trip-consistency),
 [nationality normalisation](#nationality-normalisation) and
 [capability/versioning awareness](#canonical-versioning-and-capability-discovery), plus
 [OpenAPI/Swagger tooling](#openapi-and-swagger).
@@ -274,13 +274,62 @@ both operations can be added by registration alone while retaining exact concret
 
 ## Test and review
 
+Run commands from the repository root. These are the observed passing results on
+**11 September 2026**, using **Node 24.21.0 / npm 12.0.2**:
+
+| Test folder / selection | Command | Passing result |
+| --- | --- | --- |
+| `tests/unit/` — model, mappings, registry, configuration and validation | `npm run test:unit` | 246 tests across 8 files |
+| `tests/api/` — HTTP contracts, extensibility and resilience | `npm run test:api` | 216 tests across 3 files |
+| API resilience matrix only (included in API total) | `npm run test:resilience` | 195 tests |
+| `tests/smoke/` — real HTTP and compiled-server checks | `npm run test:smoke` | 22 tests across 2 files |
+| All unit/API tests together | `npm test` | 462 tests |
+
+**484 distinct tests pass across the three test folders.** Resilience is a subset of the API
+total; coverage reruns the unit/API suite and must not be counted as additional distinct tests.
+`tests/helpers/` contains shared fixtures/assertions rather than a separate test suite.
+
+To list every individual test name while running a folder, append `-- --reporter=verbose`:
+
+```sh
+npm run test:unit -- --reporter=verbose
+npm run test:api -- --reporter=verbose
+npm run test:smoke -- --reporter=verbose
+```
+
+To run one file, append its path, for example
+`npm run test:unit -- tests/unit/consistency.test.ts` or
+`npm run test:smoke -- tests/smoke/resilience.test.ts`.
+
+<details>
+<summary>Passing test-file inventory</summary>
+
+| Folder | Test file | Passed |
+| --- | --- | --- |
+| `tests/unit/` | `client.test.ts` | 52 |
+| `tests/unit/` | `config.test.ts` | 10 |
+| `tests/unit/` | `consistency.test.ts` | 2 |
+| `tests/unit/` | `cosper.test.ts` | 39 |
+| `tests/unit/` | `countries.test.ts` | 17 |
+| `tests/unit/` | `inbound.test.ts` | 115 |
+| `tests/unit/` | `registry.test.ts` | 4 |
+| `tests/unit/` | `validation.test.ts` | 7 |
+| `tests/api/` | `app.test.ts` | 19 |
+| `tests/api/` | `extensibility.test.ts` | 2 |
+| `tests/api/` | `resilience.test.ts` | 195 |
+| `tests/smoke/` | `server.test.ts` | 6 |
+| `tests/smoke/` | `resilience.test.ts` | 16 |
+
+</details>
+
+Additional QA commands:
+
 ```sh
 npm run check:fast
 npm run typecheck
 npm run lint
-npm test
+npm run format:check
 npm run coverage
-npm run test:smoke
 npm run check
 ```
 
@@ -309,7 +358,7 @@ type-error suppressions are used to make application checks pass.
 
 ## Requirement coverage
 
-Approved implementation scope: all seven core requirements, the round-trip consistency,
+Approved implementation scope: all seven core requirements, resilience, round-trip consistency,
 nationality normalisation, capability/versioning awareness and tooling/ergonomics stretch goals.
 The tables distinguish completed work from deferred optional work. Numbers below follow the
 exercise brief's order, rather than implementation priority.
@@ -330,12 +379,35 @@ exercise brief's order, rather than implementation priority.
 
 | Stretch goal | Status and coverage | Code / evidence |
 | --- | --- | --- |
-| 1. Resilience | **Partially covered by core work; not claimed as a completed stretch goal.** Safe 4xx/500 responses and body limits exist, but no additional resilience feature was added. | [HTTP errors](src/http/app.ts), [failure tests](tests/api/app.test.ts), [body-limit smoke test](tests/smoke/server.test.ts) |
+| 1. Resilience | **Approved and implemented:** all supported POST endpoints have malformed/partial-data, size-limit and fault coverage; discovery/output defects and non-Error throws return safe responses; subsequent requests recover. | [API matrix](tests/api/resilience.test.ts), [real HTTP failure/recovery](tests/smoke/resilience.test.ts), [shared failure boundary](src/http/app.ts) |
 | 2. Round-trip consistency | **Approved and implemented:** directly compare both samples' shared canonical data and preserve legitimate differences. | [Dedicated consistency suite](tests/unit/consistency.test.ts), [explanation below](#round-trip-consistency) |
 | 3. Nationality / country normalisation | **Approved and implemented:** country names/codes and documented nationality labels produce a bounded alpha-2 nationality code. | [Catalogue and canonical schema](src/domain/countries.ts), [normalisation helper](src/shared/countries.ts), [mapping tests](tests/unit/countries.test.ts) |
 | 4. Second resource end-to-end | **Not started.** Client is the only resource. | [Current resource contract](src/domain/client.ts) |
 | 5. Capability / versioning awareness | **Approved and implemented:** the registry derives operations from actual adapter methods and reports an explicit canonical `v1`; every normalised client declares `schema_version: "v1"`. | [Versioned canonical schemas](src/domain/client.ts), [capability registry](src/registry/registry.ts), [API/extension tests](tests/api/app.test.ts) |
 | 6. Tooling & ergonomics | **Approved and implemented:** repository hooks, shared QA commands, CI, safe structured logging and source-derived OpenAPI/Swagger documentation. | [OpenAPI contract](src/http/openapi.ts), [hook installer](scripts/install-hooks.mjs), [QA scripts](package.json), [CI](.github/workflows/qa.yml) |
+
+## API resilience
+
+Run `npm run test:resilience` for the focused 195-case API matrix, or `npm run test:smoke`
+for real HTTP and compiled-server verification. The matrix covers Acorn normalisation,
+Beacon normalisation, Cosper request building, provider discovery, OpenAPI and Swagger routes.
+
+Supported partial provider records return 200 with deliberate nulls, empty collections and
+documented enum defaults. Invalid known fields fail atomically with 422 and original field
+paths; transport errors retain their documented 400/413/415 responses. Normalisation and
+build operations remain synchronous; no external provider calls or retry policy are introduced.
+
+Unexpected exceptions and invalid generated data return a generic 500. A shared boundary also
+catches non-Error JavaScript throws, such as strings or null, which otherwise escape Hono's
+Error-only handler. One correlated logging attempt contains only safe operational fields,
+even when the log sink itself fails. Tests assert privacy, request-ID isolation and successful
+requests immediately following failures on the same application/server.
+
+Body limits are verified at one byte below, exactly at, and one byte above 1 MiB, with UTF-8
+data and accurate or absent Content-Length headers. Smoke tests also send genuinely chunked
+uploads. Documentation remains available when an injected provider registry fails.
+This is evidence for the listed finite failure cases, not a guarantee against every possible
+resource-exhaustion attack or process failure. See [verification evidence](docs/verification.md).
 
 ## Canonical versioning and capability discovery
 
