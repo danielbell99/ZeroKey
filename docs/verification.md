@@ -237,6 +237,21 @@ generated OpenAPI paths/schemas, invalid generated output, and safe structured e
 The compiled-server suite exercises all six POST operations, including address failure-and-recovery
 paths, over real loopback HTTP.
 
+## README clean-checkout reproduction — 11 September 2026
+
+An isolated, dependency-free checkout was used to follow the README without consulting the
+exercise PDF. Node 24.21.0 and npm 12.0.2 were selected as documented; `npm ci` installed the
+lockfile and repository-local hooks with 0 vulnerabilities. The default local port was occupied
+by an unrelated process, so the README's documented `PORT=3001` fallback was used consistently
+for the server and `ZEROKEY_URL`.
+
+Provider discovery, both supplied client normalisation calls, the Acorn-to-Cosper client pipeline,
+the expected 422 validation example, address discovery, the Acorn-to-Cosper address pipeline,
+`/openapi.json` and `/docs` all responded successfully over loopback HTTP. The built application
+was also started with `PORT=3001 npm start` and served provider discovery plus OpenAPI. Finally,
+the README's `npm run check` completed with 579 unit/API tests, 37 smoke tests, all coverage
+thresholds and 0 audit vulnerabilities; its two focused stretch commands passed 2 and 132 tests.
+
 ## Acceptance evidence
 
 | Core requirement | Evidence |
