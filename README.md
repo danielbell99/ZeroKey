@@ -7,7 +7,7 @@ sample clients are fictional. Cosper responses are simulations; no external prov
 The [requirement coverage](#requirement-coverage) maps the approved scope to code and tests.
 Completed stretch goals are [resilience](#api-resilience), [round-trip consistency](#round-trip-consistency),
 [nationality normalisation](#nationality-normalisation) and
-[capability/versioning awareness](#canonical-versioning-and-capability-discovery), plus
+[a second address resource](#second-resource-addresses), [capability/versioning awareness](#canonical-versioning-and-capability-discovery), plus
 [OpenAPI/Swagger tooling](#openapi-and-swagger).
 
 ## Quick start
@@ -279,13 +279,13 @@ Run commands from the repository root. These are the observed passing results on
 
 | Test folder / selection | Command | Passing result |
 | --- | --- | --- |
-| `tests/unit/` — model, mappings, registry, configuration and validation | `npm run test:unit` | 246 tests across 8 files |
-| `tests/api/` — HTTP contracts, extensibility and resilience | `npm run test:api` | 216 tests across 3 files |
-| API resilience matrix only (included in API total) | `npm run test:resilience` | 195 tests |
-| `tests/smoke/` — real HTTP and compiled-server checks | `npm run test:smoke` | 22 tests across 2 files |
-| All unit/API tests together | `npm test` | 462 tests |
+| `tests/unit/` — model, mappings, registry, configuration and validation | `npm run test:unit` | `Test Files 9 passed (9)`; `Tests 252 passed (252)` |
+| `tests/api/` — HTTP contracts, extensibility and resilience | `npm run test:api` | `Test Files 4 passed (4)`; `Tests 327 passed (327)` |
+| API resilience matrix only (included in API total) | `npm run test:resilience` | `Test Files 1 passed (1)`; `Tests 299 passed (299)` |
+| `tests/smoke/` — real HTTP and compiled-server checks | `npm run test:smoke` | `Test Files 2 passed (2)`; `Tests 37 passed (37)` |
+| All unit/API tests together | `npm test` | `Test Files 13 passed (13)`; `Tests 579 passed (579)` |
 
-**484 distinct tests pass across the three test folders.** Resilience is a subset of the API
+**616 distinct tests pass across the three test folders.** Resilience is a subset of the API
 total; coverage reruns the unit/API suite and must not be counted as additional distinct tests.
 `tests/helpers/` contains shared fixtures/assertions rather than a separate test suite.
 
@@ -300,27 +300,6 @@ npm run test:smoke -- --reporter=verbose
 To run one file, append its path, for example
 `npm run test:unit -- tests/unit/consistency.test.ts` or
 `npm run test:smoke -- tests/smoke/resilience.test.ts`.
-
-<details>
-<summary>Passing test-file inventory</summary>
-
-| Folder | Test file | Passed |
-| --- | --- | --- |
-| `tests/unit/` | `client.test.ts` | 52 |
-| `tests/unit/` | `config.test.ts` | 10 |
-| `tests/unit/` | `consistency.test.ts` | 2 |
-| `tests/unit/` | `cosper.test.ts` | 39 |
-| `tests/unit/` | `countries.test.ts` | 17 |
-| `tests/unit/` | `inbound.test.ts` | 115 |
-| `tests/unit/` | `registry.test.ts` | 4 |
-| `tests/unit/` | `validation.test.ts` | 7 |
-| `tests/api/` | `app.test.ts` | 19 |
-| `tests/api/` | `extensibility.test.ts` | 2 |
-| `tests/api/` | `resilience.test.ts` | 195 |
-| `tests/smoke/` | `server.test.ts` | 6 |
-| `tests/smoke/` | `resilience.test.ts` | 16 |
-
-</details>
 
 Additional QA commands:
 
@@ -358,39 +337,38 @@ type-error suppressions are used to make application checks pass.
 
 ## Requirement coverage
 
-Approved implementation scope: all seven core requirements, resilience, round-trip consistency,
-nationality normalisation, capability/versioning awareness and tooling/ergonomics stretch goals.
-The tables distinguish completed work from deferred optional work. Numbers below follow the
-exercise brief's order, rather than implementation priority.
+All seven core requirements and all six listed stretch goals are implemented. Each row below is
+a concise, code-first record of what exists and where to inspect it.
 
 ### Core requirements — approved and implemented
 
 | Core requirement | Implementation / deliverable | Verification |
 | --- | --- | --- |
-| 1. Canonical model, types and runtime validation | [Canonical Zod schemas and inferred types](src/domain/client.ts) | [Schema and type tests](tests/unit/client.test.ts), `npm run typecheck` |
-| 2. Two inbound adapters | [Acorn](src/providers/acorn/normalise.ts), [Beacon](src/providers/beacon/normalise.ts), [normalisation helpers](src/shared/normalisation.ts) | [Fixtures, enums, dates and missing data](tests/unit/inbound.test.ts), [validation paths](tests/unit/validation.test.ts) |
-| 3. Cosper outbound adapter | [Request builder](src/providers/cosper/build-request.ts), [destination schema](src/providers/cosper/schema.ts) | [Exact target, encodings and contact selection](tests/unit/cosper.test.ts) |
-| 4. Hono API and structured errors | [HTTP application](src/http/app.ts), [validation errors](src/shared/validation.ts) | [API contracts and errors](tests/api/app.test.ts), [real-server smoke tests](tests/smoke/server.test.ts) |
-| 5. Extensible architecture | [Registry](src/registry/registry.ts), [provider registration](src/registry/providers.ts) | [Registry tests](tests/unit/registry.test.ts), [fourth-provider proof](tests/api/extensibility.test.ts) |
-| 6. Meaningful tests | [Test suites](tests), [coverage gates](vitest.config.ts), [QA scripts](package.json) | `npm run check`; [recorded evidence](docs/verification.md) |
-| 7. README and runnable examples | [Quick start](#quick-start), [API examples](#exercise-the-api), [model boundaries](#model-and-architectural-boundaries), [mapping decisions](#mapping-decisions-and-limits), [add a provider](#add-a-provider), [OpenAPI/Swagger](#openapi-and-swagger) | [Installation and API exercise evidence](docs/verification.md) |
+| 1. Canonical model, types and runtime validation | Strict canonical Client and address-resource Zod schemas are the source of runtime and TypeScript types in [src/domain/](src/domain). | [tests/unit/client.test.ts](tests/unit/client.test.ts), [tests/unit/address.test.ts](tests/unit/address.test.ts), `npm run typecheck` |
+| 2. Two inbound adapters | Acorn and Beacon validate messy provider shapes and map them through shared address mappers in [src/providers/acorn/](src/providers/acorn) and [src/providers/beacon/](src/providers/beacon). | [tests/unit/inbound.test.ts](tests/unit/inbound.test.ts), [tests/unit/address.test.ts](tests/unit/address.test.ts) |
+| 3. Cosper outbound adapter | Canonical data is converted to strict simulated Cosper client and address request bodies in [src/providers/cosper/](src/providers/cosper). | [tests/unit/cosper.test.ts](tests/unit/cosper.test.ts), [tests/unit/address.test.ts](tests/unit/address.test.ts) |
+| 4. Hono API and structured errors | [src/http/](src/http) exposes versioned client/address routes, OpenAPI and client-safe error envelopes. | [tests/api/](tests/api), [tests/smoke/](tests/smoke) |
+| 5. Extensible architecture | The registry in [src/registry/](src/registry) derives provider/resource capability discovery from registered handlers; routes do not branch on provider names. | [tests/unit/registry.test.ts](tests/unit/registry.test.ts), [tests/api/extensibility.test.ts](tests/api/extensibility.test.ts) |
+| 6. Meaningful tests | Unit, API and compiled-server suites in [tests/](tests) cover mappings, contracts, failure recovery and coverage thresholds. | `npm run check`; [docs/verification.md](docs/verification.md) |
+| 7. README and runnable examples | This README documents installation, curl flows, design choices, complete coverage and local Swagger. | [Quick start](#quick-start), [OpenAPI/Swagger](#openapi-and-swagger) |
 
 ### Stretch goals — completion status
 
 | Stretch goal | Status and coverage | Code / evidence |
 | --- | --- | --- |
-| 1. Resilience | **Approved and implemented:** all supported POST endpoints have malformed/partial-data, size-limit and fault coverage; discovery/output defects and non-Error throws return safe responses; subsequent requests recover. | [API matrix](tests/api/resilience.test.ts), [real HTTP failure/recovery](tests/smoke/resilience.test.ts), [shared failure boundary](src/http/app.ts) |
-| 2. Round-trip consistency | **Approved and implemented:** directly compare both samples' shared canonical data and preserve legitimate differences. | [Dedicated consistency suite](tests/unit/consistency.test.ts), [explanation below](#round-trip-consistency) |
-| 3. Nationality / country normalisation | **Approved and implemented:** country names/codes and documented nationality labels produce a bounded alpha-2 nationality code. | [Catalogue and canonical schema](src/domain/countries.ts), [normalisation helper](src/shared/countries.ts), [mapping tests](tests/unit/countries.test.ts) |
-| 4. Second resource end-to-end | **Not started.** Client is the only resource. | [Current resource contract](src/domain/client.ts) |
-| 5. Capability / versioning awareness | **Approved and implemented:** the registry derives operations from actual adapter methods and reports an explicit canonical `v1`; every normalised client declares `schema_version: "v1"`. | [Versioned canonical schemas](src/domain/client.ts), [capability registry](src/registry/registry.ts), [API/extension tests](tests/api/app.test.ts) |
-| 6. Tooling & ergonomics | **Approved and implemented:** repository hooks, shared QA commands, CI, safe structured logging and source-derived OpenAPI/Swagger documentation. | [OpenAPI contract](src/http/openapi.ts), [hook installer](scripts/install-hooks.mjs), [QA scripts](package.json), [CI](.github/workflows/qa.yml) |
+| 1. Resilience | Every supported client and address POST route handles malformed input, body limits, unexpected throws and recovery without leaking caller data. | [src/http/app.ts](src/http/app.ts), [tests/api/resilience.test.ts](tests/api/resilience.test.ts), [tests/smoke/resilience.test.ts](tests/smoke/resilience.test.ts) |
+| 2. Round-trip consistency | The original Acorn and Beacon fixtures are normalised and compared on their shared canonical projection without erasing legitimate source differences. | [tests/unit/consistency.test.ts](tests/unit/consistency.test.ts) |
+| 3. Nationality / country normalisation | A bounded shared country catalogue maps documented country names, codes and demonyms such as `British` to canonical alpha-2 values. | [src/domain/countries.ts](src/domain/countries.ts), [src/shared/countries.ts](src/shared/countries.ts), [tests/unit/countries.test.ts](tests/unit/countries.test.ts) |
+| 4. Second resource end-to-end | Acorn/Beacon address envelopes normalise to `CanonicalAddressResourceV1`, then build a documented simulated Cosper projection. | [src/domain/address.ts](src/domain/address.ts), [provider address adapters](src/providers), [tests/unit/address.test.ts](tests/unit/address.test.ts), [tests/api/address.test.ts](tests/api/address.test.ts) |
+| 5. Capability / versioning awareness | `schema_version: "v1"` is explicit and `GET /v1/providers?resource=addresses` is derived from registered handlers rather than a hard-coded list. | [src/registry/registry.ts](src/registry/registry.ts), [src/http/app.ts](src/http/app.ts), [tests/api/address.test.ts](tests/api/address.test.ts) |
+| 6. Tooling & ergonomics | Repository hooks, pinned scripts, structured safe logs, generated OpenAPI and Swagger make the local service repeatable to run and review. | [package.json](package.json), [scripts/](scripts), [src/http/openapi.ts](src/http/openapi.ts), [.github/workflows/qa.yml](.github/workflows/qa.yml) |
 
 ## API resilience
 
-Run `npm run test:resilience` for the focused 195-case API matrix, or `npm run test:smoke`
+Run `npm run test:resilience` for the focused API matrix, or `npm run test:smoke`
 for real HTTP and compiled-server verification. The matrix covers Acorn normalisation,
-Beacon normalisation, Cosper request building, provider discovery, OpenAPI and Swagger routes.
+Beacon normalisation, Cosper request building, client and address resources, provider discovery,
+OpenAPI and Swagger routes.
 
 Supported partial provider records return 200 with deliberate nulls, empty collections and
 documented enum defaults. Invalid known fields fail atomically with 422 and original field
@@ -409,6 +387,34 @@ uploads. Documentation remains available when an injected provider registry fail
 This is evidence for the listed finite failure cases, not a guarantee against every possible
 resource-exhaustion attack or process failure. See [verification evidence](docs/verification.md).
 
+## Second resource: addresses
+
+Addresses are a standalone canonical `v1` resource associated with an opaque `client_id`; this
+does not claim identity matching or invent an address ID. The inbound providers share their
+address mappers with the existing client adapters, while the simulated Cosper output uses only
+`ClientRef`, two address lines, town, postcode and country. County, primary status and move-in
+date remain canonical but are deliberately not invented into the supplied Cosper shape.
+
+Discover address support and drive an Acorn address through the full local flow:
+
+```sh
+curl --fail-with-body -sS "$ZEROKEY_URL/v1/providers?resource=addresses"
+
+curl --fail-with-body -sS \
+  -H 'Content-Type: application/json' \
+  --data '{"client_id":"90210","address":{"isPrimary":true,"buildingName":"Flat 4","street":"12 Vereker Road","town":"London","postcode":"W14 9JR","countryName":"United Kingdom","movedIn":"2016-03-01"}}' \
+  "$ZEROKEY_URL/v1/acorn/addresses/normalise" |
+curl --fail-with-body -sS \
+  -H 'Content-Type: application/json' \
+  --data-binary @- \
+  "$ZEROKEY_URL/v1/cosper/addresses/build-request"
+```
+
+Blank/primary-only addresses return a structured `422 empty_address`; an address containing only
+canonical fields Cosper cannot represent returns `422 unrepresentable_address`. Unknown inbound
+countries become null; unsupported non-null canonical destination countries return a field-level
+`unsupported_country` issue.
+
 ## Canonical versioning and capability discovery
 
 `schema_version: "v1"` identifies the complete canonical client contract. Its nested address
@@ -419,8 +425,9 @@ adapter. It rejects any other version as invalid caller data.
 
 `GET /v1/providers` is generated from the registry, rather than a hard-coded list. Each entry
 contains `slug`, `supports` and `canonical_version`. Registering a provider with `normalise`,
-`buildRequest`, or both automatically updates discovery and route dispatch. The API test proves
-this with a fourth provider without changing any HTTP route code.
+`buildRequest`, address equivalents, or both automatically updates discovery and route dispatch.
+`GET /v1/providers?resource=addresses` selects independently registered address capabilities.
+The API test proves client-provider extension without changing any HTTP route code.
 
 Future incompatible canonical changes require a new contract identifier such as `v2` and an
 explicit compatibility policy. This implementation never interprets an unknown version as v1.
@@ -474,6 +481,10 @@ The first command prints the generated OpenAPI JSON. The second opens the intera
 reference in the default browser. This screenshot records a successful manual Swagger check:
 
 ![Swagger UI showing all documented ZeroKey API operations and schemas](docs/openapi-swagger-ui.png)
+
+This later capture shows the completed standalone address operations and their generated schemas:
+
+![Swagger UI showing client and address operations plus address resource schemas](docs/openapi-swagger-addresses.png)
 
 ## Round-trip consistency
 

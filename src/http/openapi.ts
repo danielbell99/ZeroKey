@@ -1,7 +1,9 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { CanonicalAddressResourceSchema } from "../domain/address.js";
 import { CanonicalClientInputSchema, CanonicalClientSchema } from "../domain/client.js";
-import { AcornClientSchema } from "../providers/acorn/schema.js";
-import { BeaconClientSchema } from "../providers/beacon/schema.js";
+import { AcornAddressEnvelopeSchema, AcornClientSchema } from "../providers/acorn/schema.js";
+import { BeaconAddressEnvelopeSchema, BeaconClientSchema } from "../providers/beacon/schema.js";
+import { CosperAddressBuildResultSchema } from "../providers/cosper/address.js";
 import { CosperBuildResultSchema } from "../providers/cosper/schema.js";
 import { ProviderCapabilitiesSchema } from "../registry/registry.js";
 
@@ -56,6 +58,9 @@ const BuildProviderParamsSchema = z.object({
       example: "cosper",
     }),
 });
+const ResourceQuerySchema = z.object({
+  resource: z.enum(["clients", "addresses"]).optional().openapi({ example: "addresses" }),
+});
 
 const NormaliseInputSchema = z.union([AcornClientSchema, BeaconClientSchema]);
 
@@ -86,12 +91,76 @@ export const providersRoute = createRoute({
   path: "/v1/providers",
   tags: ["Providers"],
   summary: "List registered providers and operations",
+  request: { query: ResourceQuerySchema },
   responses: {
     200: {
       description: "Registered provider capabilities",
       content: { "application/json": { schema: ProviderCapabilitiesSchema } },
       headers: RequestIdHeadersSchema,
     },
+    500: { description: "Unexpected internal failure", ...JsonErrorResponse },
+  },
+});
+
+const AddressNormaliseInputSchema = z.union([
+  AcornAddressEnvelopeSchema,
+  BeaconAddressEnvelopeSchema,
+]);
+
+export const addressNormaliseRoute = createRoute({
+  method: "post",
+  path: "/v1/{provider}/addresses/normalise",
+  tags: ["Addresses"],
+  summary: "Normalise one provider address into the canonical address resource",
+  description:
+    "The supplied client_id is an opaque association, not an identity-resolution claim. The address resource always declares canonical schema_version v1.",
+  request: {
+    params: NormaliseProviderParamsSchema,
+    body: {
+      required: true,
+      content: { "application/json": { schema: AddressNormaliseInputSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Canonical address resource",
+      content: { "application/json": { schema: CanonicalAddressResourceSchema } },
+      headers: RequestIdHeadersSchema,
+    },
+    400: { description: "Unsupported operation or malformed JSON", ...JsonErrorResponse },
+    404: { description: "Unknown provider", ...JsonErrorResponse },
+    413: { description: "JSON body exceeds 1 MiB", ...JsonErrorResponse },
+    415: { description: "Content-Type is not application/json", ...JsonErrorResponse },
+    422: { description: "Provider payload is invalid", ...JsonErrorResponse },
+    500: { description: "Unexpected internal failure", ...JsonErrorResponse },
+  },
+});
+
+export const addressBuildRequestRoute = createRoute({
+  method: "post",
+  path: "/v1/{provider}/addresses/build-request",
+  tags: ["Addresses"],
+  summary: "Build a simulated provider request for one canonical address",
+  description:
+    "Cosper's address projection is an exercise extension derived only from fields in the supplied client-create fixture; no external request is made.",
+  request: {
+    params: BuildProviderParamsSchema,
+    body: {
+      required: true,
+      content: { "application/json": { schema: CanonicalAddressResourceSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Generated provider request and simulated response",
+      content: { "application/json": { schema: CosperAddressBuildResultSchema } },
+      headers: RequestIdHeadersSchema,
+    },
+    400: { description: "Unsupported operation or malformed JSON", ...JsonErrorResponse },
+    404: { description: "Unknown provider", ...JsonErrorResponse },
+    413: { description: "JSON body exceeds 1 MiB", ...JsonErrorResponse },
+    415: { description: "Content-Type is not application/json", ...JsonErrorResponse },
+    422: { description: "Canonical address is invalid or unrepresentable", ...JsonErrorResponse },
     500: { description: "Unexpected internal failure", ...JsonErrorResponse },
   },
 });

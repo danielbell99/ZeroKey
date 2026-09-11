@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { TextSchema } from "../../domain/client.js";
 import { OptionalBritishDateSchema } from "../../shared/normalisation.js";
 import {
   OptionalBooleanSchema,
@@ -11,33 +12,38 @@ import {
 const BagEntrySchema = z.object({ key: z.string().min(1), value: z.unknown().optional() });
 type BagEntry = z.infer<typeof BagEntrySchema>;
 
+export const BeaconAddressSchema = z.object({
+  line1: OptionalTextSchema,
+  line2: OptionalTextSchema,
+  city: OptionalTextSchema,
+  county: OptionalTextSchema,
+  postcode: OptionalTextSchema,
+  country: OptionalTextSchema,
+  primary: z
+    .union([
+      z.boolean(),
+      z
+        .string()
+        .trim()
+        .toLowerCase()
+        .pipe(z.enum(["true", "false"]))
+        .transform((value) => value === "true"),
+    ])
+    .nullish()
+    .transform((value) => value ?? false),
+});
+export type BeaconAddress = z.infer<typeof BeaconAddressSchema>;
+
+export const BeaconAddressEnvelopeSchema = z
+  .strictObject({ client_id: TextSchema, address: BeaconAddressSchema })
+  .openapi("BeaconAddressEnvelope");
+
 export const BeaconClientSchema = z
   .object({
     recordId: z.string().trim().min(1),
     attributes: optionalArray(BagEntrySchema),
     formattedValues: optionalArray(BagEntrySchema),
-    addresses: optionalArray(
-      z.object({
-        line1: OptionalTextSchema,
-        line2: OptionalTextSchema,
-        city: OptionalTextSchema,
-        county: OptionalTextSchema,
-        postcode: OptionalTextSchema,
-        country: OptionalTextSchema,
-        primary: z
-          .union([
-            z.boolean(),
-            z
-              .string()
-              .trim()
-              .toLowerCase()
-              .pipe(z.enum(["true", "false"]))
-              .transform((value) => value === "true"),
-          ])
-          .nullish()
-          .transform((value) => value ?? false),
-      }),
-    ),
+    addresses: optionalArray(BeaconAddressSchema),
     contacts: optionalArray(
       z.object({
         type: z.number().int().nullish(),

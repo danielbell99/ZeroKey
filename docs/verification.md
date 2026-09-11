@@ -205,6 +205,38 @@ for all POST endpoints before checking clean shutdown on both signals.
 Sandbox-only listener failures were environmental (loopback listen EPERM); rerunning with
 loopback access passed. No test was skipped, silenced or weakened to accommodate that restriction.
 
+## Second resource: addresses — 11 September 2026
+
+Addresses extend the same boundary pattern without manufacturing an address identity: Acorn and
+Beacon address envelopes normalise to a strict `CanonicalAddressResourceV1` associated with an
+opaque client reference, and the exercise-only Cosper projection is built back from that resource.
+The address mappers are reused by the existing client adapters, so the resource and embedded-client
+representations cannot drift silently. Discovery is registry-derived per resource: the client list
+and `GET /v1/providers?resource=addresses` each expose only handlers that are actually registered.
+
+The final run used an SHA-256-verified, temporary **Node 24.21.0 / npm 12.0.2** toolchain, leaving
+the machine-wide Node installation unchanged:
+
+| Check | Observed result |
+| --- | --- |
+| `npm ci` | Clean lockfile install; 69 packages added; hooks installed automatically; audit found 0 vulnerabilities |
+| `npm run format:check` | 51 files checked; no fixes needed |
+| `npm run typecheck` | Test and production TypeScript checks passed |
+| `npm run lint` | 51 files checked; no changes required |
+| `npm run test:unit` | 9 files, 252 tests passed |
+| `npm run test:api` | 4 files, 327 tests passed |
+| `npm run test:resilience` | 1 focused file, 299 tests passed (included in the API total) |
+| `npm run coverage` | 13 files, 579 tests passed; 87.72% statements, 87.45% branches, 87.75% functions and 88.91% lines; configured thresholds passed |
+| `npm run test:smoke` | Production build and 2 real-server files, 37 tests passed |
+| `npm run check` | Complete pre-push gate passed, including audit; 0 vulnerabilities |
+| `git diff --check` | No whitespace errors |
+
+The address-specific unit/API checks cover full Acorn/Beacon mappings, deliberate field loss on
+Cosper output, invalid/empty payloads, unrepresentable addresses, dynamic capability filtering,
+generated OpenAPI paths/schemas, invalid generated output, and safe structured error behaviour.
+The compiled-server suite exercises all six POST operations, including address failure-and-recovery
+paths, over real loopback HTTP.
+
 ## Acceptance evidence
 
 | Core requirement | Evidence |
